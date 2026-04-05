@@ -1,11 +1,19 @@
 <script lang="ts">
-	import favicon from '$lib/assets/favicon.svg';
+  import '../app.css'
+  import NavBar from '../components/NavBar.svelte'
 
-	let { children } = $props();
+  let { children } = $props()
 </script>
 
-<svelte:head>
-	<link rel="icon" href={favicon} />
-</svelte:head>
+<NavBar />
+<main class="main">
+  {@render children()}
+</main>
 
-{@render children()}
+<style>
+  .main {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: var(--space-lg);
+  }
+</style>
