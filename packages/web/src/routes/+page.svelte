@@ -3,15 +3,17 @@
   import { HnClient, FeedManager, FEED_ENDPOINTS, type FeedType, type Story } from '@hackernews/core'
   import StoryCard from '../components/StoryCard.svelte'
   import StoryCardSkeleton from '../components/StoryCardSkeleton.svelte'
+  import { getKeyboardState } from '$lib/keyboard.svelte'
 
   const client = new HnClient()
   const feedManager = new FeedManager(client)
+
+  const kb = getKeyboardState()
 
   let stories: Story[] = $state([])
   let loading = $state(true)
   let currentPage = $state(0)
   let loadingMore = $state(false)
-  let selectedIndex = $state(0)
 
   let feedType: FeedType = $derived(
     (new URLSearchParams(page.url.search).get('feed') as FeedType) ?? 'top'
@@ -23,9 +25,13 @@
     // Reset when feed changes
     stories = []
     currentPage = 0
-    selectedIndex = 0
+    kb.selectedIndex = 0
     loading = true
     loadFeed(endpoint, 0)
+  })
+
+  $effect(() => {
+    kb.storyIds = stories.map((s) => s.id)
   })
 
   async function loadFeed(ep: string, pg: number) {
@@ -63,7 +69,7 @@
     {/each}
   {:else}
     {#each stories as story, i}
-      <StoryCard {story} index={i} selected={i === selectedIndex} />
+      <StoryCard {story} index={i} selected={i === kb.selectedIndex} />
     {/each}
     {#if loadingMore}
       {#each Array(5) as _}
