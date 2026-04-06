@@ -72,7 +72,11 @@
     color: inherit;
   }
 
-  .story-card:hover,
+  .story-card:hover {
+    background: var(--color-surface-hover);
+    color: inherit;
+  }
+
   .story-card.selected {
     background: var(--color-surface-hover);
   }
@@ -114,7 +118,7 @@
   }
 
   .domain:hover {
-    color: var(--color-text-muted);
+    color: var(--color-accent);
   }
 
   .meta {
@@ -145,7 +149,7 @@
   }
 
   .open-link:hover {
-    color: var(--color-text);
+    color: var(--color-accent);
   }
 
   .score {

@@ -5,7 +5,6 @@
     getCollections,
     addToCollection,
     removeFromCollection,
-    getCollectionsForItem,
   } from '$lib/collections.svelte'
   import CollectionPicker from './CollectionPicker.svelte'
 
@@ -13,17 +12,17 @@
 
   const cols = getCollections()
 
-  let itemCollections: Collection[] = $state([])
   let showPicker = $state(false)
+  let itemCollections = $derived(
+    cols.value.filter((c) => c.itemIds.includes(itemId))
+  )
   let saved = $derived(itemCollections.length > 0)
-
-  $effect(() => {
-    loadItemCollections(itemId)
+  let iconColor = $derived(() => {
+    if (!saved) return ''
+    const custom = itemCollections.find((c) => c.id !== DEFAULT_COLLECTION_ID)
+    if (custom) return custom.color
+    return itemCollections[0]?.color ?? ''
   })
-
-  async function loadItemCollections(id: number) {
-    itemCollections = await getCollectionsForItem(id)
-  }
 
   async function handleClick(e: MouseEvent) {
     e.preventDefault()
@@ -35,7 +34,6 @@
       } else {
         await addToCollection(DEFAULT_COLLECTION_ID, itemId)
       }
-      await loadItemCollections(itemId)
     } else {
       showPicker = !showPicker
     }
@@ -48,7 +46,6 @@
     } else {
       await addToCollection(collectionId, itemId)
     }
-    await loadItemCollections(itemId)
   }
 </script>
 
@@ -58,6 +55,7 @@
     class:saved
     onclick={handleClick}
     title={saved ? 'Saved' : 'Save'}
+    style={saved ? `color: ${iconColor()}` : ''}
   >
     {saved ? '●' : '○'}
   </button>
@@ -93,7 +91,6 @@
     color: var(--color-text);
   }
 
-  .save-btn.saved {
-    color: var(--color-accent);
-  }
+
+
 </style>

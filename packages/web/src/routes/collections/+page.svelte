@@ -216,7 +216,7 @@
   }
 
   .collection-name:hover {
-    color: var(--color-link-hover);
+    color: var(--color-accent);
   }
 
   .item-count {

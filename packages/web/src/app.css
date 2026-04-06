@@ -1,4 +1,11 @@
 :root {
+  --font-sans: system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', monospace;
+  --max-width: 840px;
+}
+
+:root,
+:root[data-theme="dark"] {
   --color-bg: #141414;
   --color-surface: #1c1c1c;
   --color-surface-hover: #242424;
@@ -10,11 +17,20 @@
   --color-link: #d4d4d4;
   --color-link-hover: #f0f0f0;
   --color-danger: #c00;
+}
 
-  --font-sans: system-ui, -apple-system, sans-serif;
-  --font-mono: ui-monospace, 'SF Mono', monospace;
-
-  --max-width: 840px;
+:root[data-theme="light"] {
+  --color-bg: #f5f5f5;
+  --color-surface: #ffffff;
+  --color-surface-hover: #ebebeb;
+  --color-border: #d4d4d4;
+  --color-text: #1a1a1a;
+  --color-text-muted: #6b6b6b;
+  --color-text-faint: #999999;
+  --color-accent: #ff6600;
+  --color-link: #1a1a1a;
+  --color-link-hover: #000000;
+  --color-danger: #c00;
 }
 
 *,
@@ -44,7 +60,7 @@ a {
 }
 
 a:hover {
-  color: var(--color-link-hover);
+  color: var(--color-accent);
 }
 
 button {

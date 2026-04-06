@@ -136,7 +136,7 @@
   }
 
   .story-title a:hover {
-    color: var(--color-link-hover);
+    color: var(--color-accent);
   }
 
   .story-meta {
@@ -186,7 +186,7 @@
   }
 
   .open-link:hover {
-    color: var(--color-text);
+    color: var(--color-accent);
   }
 
   .no-comments {

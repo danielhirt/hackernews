@@ -16,13 +16,15 @@
   let memberIds = $derived(new Set(itemCollections.map((c) => c.id)))
 </script>
 
-<div class="picker-backdrop" onclick={onclose} role="presentation"></div>
-<div class="picker">
+<div class="picker-backdrop" onclick={(e) => { e.preventDefault(); e.stopPropagation(); onclose(); }} role="presentation"></div>
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="picker" onclick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
   {#each collections as col (col.id)}
     <button
       class="picker-item"
       class:active={memberIds.has(col.id)}
-      onclick={() => onselect(col.id)}
+      onclick={(e) => { e.preventDefault(); e.stopPropagation(); onselect(col.id); }}
     >
       <div class="color-dot" style="background: {col.color}"></div>
       <span>{col.name}</span>

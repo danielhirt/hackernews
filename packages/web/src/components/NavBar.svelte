@@ -2,6 +2,9 @@
   import type { FeedType } from '@hackernews/core'
   import { page } from '$app/state'
   import { refreshFeed } from '$lib/feed.svelte'
+  import { getTheme, toggleTheme } from '$lib/theme.svelte'
+
+  const theme = getTheme()
 
   const feeds: { type: FeedType; label: string; key: string }[] = [
     { type: 'top', label: 'top', key: '1' },
@@ -34,6 +37,9 @@
   <div class="nav-links">
     <button class="nav-link" onclick={refreshFeed} title="Refresh feed (r)">refresh</button>
     <a href="/collections" class="nav-link">collections</a>
+    <button class="nav-link theme-toggle" onclick={toggleTheme} title="Toggle theme">
+      {theme.value === 'dark' ? '☀' : '☾'}
+    </button>
   </div>
 </nav>
 
@@ -78,6 +84,7 @@
 
   .nav-links {
     display: flex;
+    align-items: center;
     gap: 12px;
     justify-content: flex-end;
   }
@@ -90,5 +97,13 @@
 
   .nav-link:hover {
     color: var(--color-text);
+  }
+
+  .theme-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    line-height: 1;
   }
 </style>

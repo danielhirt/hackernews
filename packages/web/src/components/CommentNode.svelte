@@ -84,7 +84,7 @@
 
   .comment-header {
     display: flex;
-    align-items: center;
+    align-items: baseline;
     gap: 6px;
     font-size: 0.85rem;
   }
@@ -108,7 +108,7 @@
 
   .focus-btn {
     color: var(--color-text-faint);
-    font-size: 0.75rem;
+    font-size: 0.85rem;
     font-family: var(--font-mono);
     padding: 0;
     line-height: 1;
@@ -129,6 +129,10 @@
   .comment-body :global(a) {
     color: var(--color-link);
     text-decoration: underline;
+  }
+
+  .comment-body :global(a:hover) {
+    color: var(--color-accent);
   }
 
 
