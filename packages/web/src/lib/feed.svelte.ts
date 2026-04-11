@@ -1,5 +1,6 @@
 import {
   createSourceClient,
+  LobstersClient,
   type SourceClient,
   type ContentSource,
   type FeedItem,
@@ -16,7 +17,12 @@ const cache = new Map<string, FeedCache>()
 function getClient(source: ContentSource): SourceClient {
   let client = clients.get(source)
   if (!client) {
-    client = createSourceClient(source)
+    if (source === 'lobsters') {
+      // Proxy through SvelteKit API route — Lobsters has no CORS headers
+      client = new LobstersClient(undefined, '/api/lobsters?path=')
+    } else {
+      client = createSourceClient(source)
+    }
     clients.set(source, client)
   }
   return client
