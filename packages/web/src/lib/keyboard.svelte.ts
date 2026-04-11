@@ -71,8 +71,8 @@ export function handleKeydown(e: KeyboardEvent) {
     case 'c': {
       e.preventDefault()
       const id = state.storyIds[state.selectedIndex]
-      if (id?.startsWith('hn:')) {
-        goto(`/item/${id.slice(3)}`)
+      if (id?.startsWith('hn:') || id?.startsWith('lo:')) {
+        goto(`/item/${id}`)
       }
       break
     }
