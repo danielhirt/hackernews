@@ -75,21 +75,21 @@ export async function updateCollectionColor(id: string, color: string): Promise<
   await refresh()
 }
 
-export async function addToCollection(collectionId: string, itemId: number): Promise<void> {
+export async function addToCollection(collectionId: string, itemId: string): Promise<void> {
   await ensureInit()
   if (!adapter) return
   await adapter.addToCollection(collectionId, itemId)
   await refresh()
 }
 
-export async function removeFromCollection(collectionId: string, itemId: number): Promise<void> {
+export async function removeFromCollection(collectionId: string, itemId: string): Promise<void> {
   await ensureInit()
   if (!adapter) return
   await adapter.removeFromCollection(collectionId, itemId)
   await refresh()
 }
 
-export async function getCollectionsForItem(itemId: number): Promise<Collection[]> {
+export async function getCollectionsForItem(itemId: string): Promise<Collection[]> {
   await ensureInit()
   if (!adapter) return []
   return adapter.getCollectionsForItem(itemId)

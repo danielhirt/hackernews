@@ -400,7 +400,7 @@ describe('StoryCard AI summary', () => {
       })
       await fireEvent.click(container.querySelector('.ai-toggle')!)
       await vi.waitFor(() => {
-        expect(mockSaveSummary).toHaveBeenCalledWith(42, 'cached text')
+        expect(mockSaveSummary).toHaveBeenCalledWith('hn:42', 'cached text')
       })
     })
 
@@ -491,7 +491,7 @@ describe('StoryCard AI summary', () => {
       const dismiss = container.querySelector('.summary-section')!.querySelectorAll('.expand-toggle')[3]
       await fireEvent.click(dismiss)
       expect(container.querySelector('.summary-section')).toBeNull()
-      expect(mockClearSummary).toHaveBeenCalledWith(7)
+      expect(mockClearSummary).toHaveBeenCalledWith('hn:7')
     })
 
     it('triggers a new fetch on Regenerate click', async () => {

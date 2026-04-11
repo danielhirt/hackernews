@@ -6,9 +6,9 @@ export interface StorageAdapter {
   getCollection(id: string): Promise<Collection | null>
   saveCollection(collection: Collection): Promise<void>
   deleteCollection(id: string): Promise<void>
-  addToCollection(collectionId: string, itemId: number): Promise<void>
-  removeFromCollection(collectionId: string, itemId: number): Promise<void>
-  getCollectionsForItem(itemId: number): Promise<Collection[]>
+  addToCollection(collectionId: string, itemId: string): Promise<void>
+  removeFromCollection(collectionId: string, itemId: string): Promise<void>
+  getCollectionsForItem(itemId: string): Promise<Collection[]>
 }
 
 function createDefaultCollection(): Collection {
@@ -46,7 +46,7 @@ export class InMemoryStorageAdapter implements StorageAdapter {
     this.collections.delete(id)
   }
 
-  async addToCollection(collectionId: string, itemId: number): Promise<void> {
+  async addToCollection(collectionId: string, itemId: string): Promise<void> {
     const collection = this.collections.get(collectionId)
     if (!collection) return
     if (!collection.itemIds.includes(itemId)) {
@@ -55,14 +55,14 @@ export class InMemoryStorageAdapter implements StorageAdapter {
     }
   }
 
-  async removeFromCollection(collectionId: string, itemId: number): Promise<void> {
+  async removeFromCollection(collectionId: string, itemId: string): Promise<void> {
     const collection = this.collections.get(collectionId)
     if (!collection) return
     collection.itemIds = collection.itemIds.filter((id) => id !== itemId)
     collection.updatedAt = Date.now()
   }
 
-  async getCollectionsForItem(itemId: number): Promise<Collection[]> {
+  async getCollectionsForItem(itemId: string): Promise<Collection[]> {
     return [...this.collections.values()].filter((c) => c.itemIds.includes(itemId))
   }
 }

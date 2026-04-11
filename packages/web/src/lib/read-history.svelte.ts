@@ -3,7 +3,7 @@ import { browser } from '$app/environment'
 const STORAGE_KEY = 'hn-read'
 const MAX_ENTRIES = 2000
 
-let readIds = $state<Set<number>>(new Set())
+let readIds = $state<Set<string>>(new Set())
 let loaded = false
 
 function ensureLoaded() {
@@ -12,7 +12,10 @@ function ensureLoaded() {
   const raw = localStorage.getItem(STORAGE_KEY)
   if (!raw) return
   try {
-    readIds = new Set(JSON.parse(raw) as number[])
+    const parsed = JSON.parse(raw) as (number | string)[]
+    readIds = new Set(parsed.map(id =>
+      typeof id === 'number' ? `hn:${id}` : String(id)
+    ))
   } catch {
     // ignore corrupt data
   }
@@ -24,12 +27,12 @@ function persist() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(trimmed))
 }
 
-export function isRead(id: number): boolean {
+export function isRead(id: string): boolean {
   ensureLoaded()
   return readIds.has(id)
 }
 
-export function markRead(id: number): void {
+export function markRead(id: string): void {
   ensureLoaded()
   if (readIds.has(id)) return
   readIds = new Set([...readIds, id])

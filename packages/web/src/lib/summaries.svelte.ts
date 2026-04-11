@@ -4,8 +4,8 @@ const STORAGE_KEY = 'hn-summaries'
 const EXPANDED_KEY = 'hn-summaries-expanded'
 const MAX_ENTRIES = 100
 
-let entries = $state<Map<number, string>>(new Map())
-let expandedState = $state<Map<number, boolean>>(new Map())
+let entries = $state<Map<string, string>>(new Map())
+let expandedState = $state<Map<string, boolean>>(new Map())
 let loaded = false
 
 function ensureLoaded() {
@@ -14,7 +14,11 @@ function ensureLoaded() {
   const raw = localStorage.getItem(STORAGE_KEY)
   if (raw) {
     try {
-      entries = new Map(JSON.parse(raw) as [number, string][])
+      const parsed = JSON.parse(raw) as [number | string, string][]
+      entries = new Map(parsed.map(([id, text]) => [
+        typeof id === 'number' ? `hn:${id}` : String(id),
+        text,
+      ]))
     } catch {
       // ignore corrupt data
     }
@@ -22,7 +26,11 @@ function ensureLoaded() {
   const rawExp = localStorage.getItem(EXPANDED_KEY)
   if (rawExp) {
     try {
-      expandedState = new Map(JSON.parse(rawExp) as [number, boolean][])
+      const parsed = JSON.parse(rawExp) as [number | string, boolean][]
+      expandedState = new Map(parsed.map(([id, val]) => [
+        typeof id === 'number' ? `hn:${id}` : String(id),
+        val,
+      ]))
     } catch {
       // ignore corrupt data
     }
@@ -40,12 +48,12 @@ function persist() {
   localStorage.setItem(EXPANDED_KEY, JSON.stringify(expArr))
 }
 
-export function getSummary(id: number): string | undefined {
+export function getSummary(id: string): string | undefined {
   ensureLoaded()
   return entries.get(id)
 }
 
-export function saveSummary(id: number, text: string): void {
+export function saveSummary(id: string, text: string): void {
   ensureLoaded()
   // delete and re-add to move to end (LRU)
   entries.delete(id)
@@ -53,7 +61,7 @@ export function saveSummary(id: number, text: string): void {
   persist()
 }
 
-export function clearSummary(id: number): void {
+export function clearSummary(id: string): void {
   ensureLoaded()
   entries.delete(id)
   expandedState.delete(id)
@@ -62,12 +70,12 @@ export function clearSummary(id: number): void {
   persist()
 }
 
-export function isExpanded(id: number): boolean {
+export function isExpanded(id: string): boolean {
   ensureLoaded()
   return expandedState.get(id) ?? false
 }
 
-export function setExpanded(id: number, expanded: boolean): void {
+export function setExpanded(id: string, expanded: boolean): void {
   ensureLoaded()
   expandedState = new Map([...expandedState, [id, expanded]])
   persist()

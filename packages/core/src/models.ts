@@ -34,13 +34,13 @@ export interface Collection {
   id: string
   name: string
   color: string
-  itemIds: number[]
+  itemIds: string[]
   createdAt: number
   updatedAt: number
 }
 
 export interface SavedItem {
-  itemId: number
+  itemId: string
   collectionId: string
   savedAt: number
 }

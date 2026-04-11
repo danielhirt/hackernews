@@ -18,16 +18,17 @@
   let focusedCommentIds: number[] = $state([])
   let refreshKey = $state(0)
 
-  let itemId = $derived(Number(page.params.id))
+  let numericId = $derived(Number(page.params.id))
+  let itemId = $derived(story ? `hn:${story.id}` : '')
   let domain = $derived(story ? domainFrom(story.url) : '')
 
   $effect(() => {
-    loadStory(itemId)
+    loadStory(numericId)
   })
 
   $effect(() => {
     setRefreshHandler(() => {
-      loadStory(itemId)
+      loadStory(numericId)
       refreshKey++
     })
     return () => setRefreshHandler(null)
@@ -73,10 +74,10 @@
   // Restore cached summary when story loads
   $effect(() => {
     if (story) {
-      const cached = getSummary(story.id)
+      const cached = getSummary(itemId)
       if (cached) {
         summaryText = cached
-        summaryExpanded = isExpanded(story.id)
+        summaryExpanded = isExpanded(itemId)
       } else {
         summaryText = ''
         summaryExpanded = false
@@ -123,7 +124,7 @@
       return
     }
     summaryExpanded = !summaryExpanded
-    setExpanded(story.id, summaryExpanded)
+    setExpanded(itemId, summaryExpanded)
   }
 
   async function fetchSummary() {
@@ -145,8 +146,8 @@
         summaryError = text
       } else {
         summaryText = text
-        saveSummary(story.id, text)
-        setExpanded(story.id, true)
+        saveSummary(itemId, text)
+        setExpanded(itemId, true)
       }
     } catch {
       summaryError = 'Failed to generate summary.'
@@ -178,7 +179,7 @@
     </div>
     <div class="header-actions">
       <button class="ai-btn" onclick={toggleSummary} title="AI summary" disabled={summaryLoading}>✦</button>
-      <SaveButton itemId={story.id} />
+      <SaveButton {itemId} />
       {#if story.url}
         <a href={story.url} target="_blank" rel="noopener" class="open-link" title="Open link">↗</a>
       {/if}
@@ -187,13 +188,13 @@
 
   {#if hasSummary}
     <div class="summary-panel">
-      <button class="summary-header" onclick={() => { summaryExpanded = !summaryExpanded; if (story) setExpanded(story.id, summaryExpanded) }}>
+      <button class="summary-header" onclick={() => { summaryExpanded = !summaryExpanded; if (story) setExpanded(itemId, summaryExpanded) }}>
         <span class="summary-label">AI Summary {summaryExpanded ? '▾' : '▸'}</span>
         <div class="summary-actions" onclick={(e) => e.stopPropagation()}>
           {#if summaryText && !summaryLoading}
             <button class="summary-copy" onclick={copySummary}>{summaryCopied ? 'Copied!' : 'Copy'}</button>
             <button class="summary-regen" onclick={fetchSummary}>Regenerate</button>
-            <button class="summary-dismiss" onclick={() => { if (story) { clearSummary(story.id); summaryText = ''; summaryError = ''; summaryExpanded = false } }}>Dismiss</button>
+            <button class="summary-dismiss" onclick={() => { if (story) { clearSummary(itemId); summaryText = ''; summaryError = ''; summaryExpanded = false } }}>Dismiss</button>
           {/if}
         </div>
       </button>

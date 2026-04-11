@@ -19,6 +19,17 @@ export class IdbStorageAdapter implements StorageAdapter {
       },
     })
 
+    // Migrate numeric itemIds to source-prefixed string format
+    const allCols = await this.db.getAll(STORE_NAME)
+    for (const col of allCols) {
+      if (col.itemIds?.some((id: unknown) => typeof id === 'number')) {
+        col.itemIds = col.itemIds.map((id: unknown) =>
+          typeof id === 'number' ? `hn:${id}` : String(id)
+        )
+        await this.db.put(STORE_NAME, col)
+      }
+    }
+
     // Migrate old 'saved' collection to 'favorites'
     const old = await this.db.get(STORE_NAME, 'saved')
     if (old) {
@@ -62,7 +73,7 @@ export class IdbStorageAdapter implements StorageAdapter {
     await this.db.delete(STORE_NAME, id)
   }
 
-  async addToCollection(collectionId: string, itemId: number): Promise<void> {
+  async addToCollection(collectionId: string, itemId: string): Promise<void> {
     const col = await this.getCollection(collectionId)
     if (!col) return
     if (!col.itemIds.includes(itemId)) {
@@ -72,7 +83,7 @@ export class IdbStorageAdapter implements StorageAdapter {
     }
   }
 
-  async removeFromCollection(collectionId: string, itemId: number): Promise<void> {
+  async removeFromCollection(collectionId: string, itemId: string): Promise<void> {
     const col = await this.getCollection(collectionId)
     if (!col) return
     col.itemIds = col.itemIds.filter((id) => id !== itemId)
@@ -80,7 +91,7 @@ export class IdbStorageAdapter implements StorageAdapter {
     await this.saveCollection(col)
   }
 
-  async getCollectionsForItem(itemId: number): Promise<Collection[]> {
+  async getCollectionsForItem(itemId: string): Promise<Collection[]> {
     const all = await this.getCollections()
     return all.filter((c) => c.itemIds.includes(itemId))
   }

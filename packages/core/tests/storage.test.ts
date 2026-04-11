@@ -41,23 +41,23 @@ describe('InMemoryStorageAdapter', () => {
   })
 
   it('adds an item to a collection', async () => {
-    await storage.addToCollection(DEFAULT_COLLECTION_ID, 12345)
+    await storage.addToCollection(DEFAULT_COLLECTION_ID, 'hn:12345')
     const collection = await storage.getCollection(DEFAULT_COLLECTION_ID)
-    expect(collection!.itemIds).toContain(12345)
+    expect(collection!.itemIds).toContain('hn:12345')
   })
 
   it('does not duplicate items in a collection', async () => {
-    await storage.addToCollection(DEFAULT_COLLECTION_ID, 12345)
-    await storage.addToCollection(DEFAULT_COLLECTION_ID, 12345)
+    await storage.addToCollection(DEFAULT_COLLECTION_ID, 'hn:12345')
+    await storage.addToCollection(DEFAULT_COLLECTION_ID, 'hn:12345')
     const collection = await storage.getCollection(DEFAULT_COLLECTION_ID)
-    expect(collection!.itemIds.filter((id) => id === 12345)).toHaveLength(1)
+    expect(collection!.itemIds.filter((id) => id === 'hn:12345')).toHaveLength(1)
   })
 
   it('removes an item from a collection', async () => {
-    await storage.addToCollection(DEFAULT_COLLECTION_ID, 12345)
-    await storage.removeFromCollection(DEFAULT_COLLECTION_ID, 12345)
+    await storage.addToCollection(DEFAULT_COLLECTION_ID, 'hn:12345')
+    await storage.removeFromCollection(DEFAULT_COLLECTION_ID, 'hn:12345')
     const collection = await storage.getCollection(DEFAULT_COLLECTION_ID)
-    expect(collection!.itemIds).not.toContain(12345)
+    expect(collection!.itemIds).not.toContain('hn:12345')
   })
 
   it('deletes a collection', async () => {
@@ -75,7 +75,7 @@ describe('InMemoryStorageAdapter', () => {
   })
 
   it('finds collections containing an item', async () => {
-    await storage.addToCollection(DEFAULT_COLLECTION_ID, 42)
+    await storage.addToCollection(DEFAULT_COLLECTION_ID, 'hn:42')
     await storage.saveCollection({
       id: 'other',
       name: 'Other',
@@ -84,9 +84,9 @@ describe('InMemoryStorageAdapter', () => {
       createdAt: Date.now(),
       updatedAt: Date.now(),
     })
-    await storage.addToCollection('other', 42)
+    await storage.addToCollection('other', 'hn:42')
 
-    const collections = await storage.getCollectionsForItem(42)
+    const collections = await storage.getCollectionsForItem('hn:42')
     expect(collections).toHaveLength(2)
   })
 })

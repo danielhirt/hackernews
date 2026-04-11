@@ -9,8 +9,9 @@
 
   let { story, index, selected = false }: { story: Story; index: number; selected?: boolean } = $props()
 
+  let itemId = $derived(`hn:${story.id}`)
   let domain = $derived(domainFrom(story.url))
-  let read = $derived(isRead(story.id))
+  let read = $derived(isRead(itemId))
   let textOpen = $state(false)
   let textExpanded = $state(false)
 
@@ -24,7 +25,7 @@
   let hasSummary = $derived(!!summaryText || summaryLoading || !!summaryError)
 
   $effect(() => {
-    const cached = getSummary(story.id)
+    const cached = getSummary(itemId)
     if (cached) summaryText = cached
   })
 
@@ -52,8 +53,8 @@
         summaryError = text
       } else {
         summaryText = text
-        saveSummary(story.id, text)
-        setExpanded(story.id, true)
+        saveSummary(itemId, text)
+        setExpanded(itemId, true)
       }
     } catch {
       summaryError = 'Failed to generate summary.'
@@ -71,7 +72,7 @@
   }
 
   function dismissSummary() {
-    clearSummary(story.id)
+    clearSummary(itemId)
     summaryText = ''
     summaryError = ''
     summaryExpanded = false
@@ -86,7 +87,7 @@
     class:selected
     class:read
     data-index={index}
-    onclick={() => markRead(story.id)}
+    onclick={() => markRead(itemId)}
   >
     <div class="story-main">
       <div class="title-row">
@@ -131,7 +132,7 @@
         disabled={summaryLoading}
         onclick={triggerSummary}
       >✦</button>
-      <SaveButton itemId={story.id} />
+      <SaveButton {itemId} />
       {#if story.url}
         <a
           href={story.url}

@@ -8,7 +8,7 @@
   } from '$lib/collections.svelte'
   import CollectionPicker from './CollectionPicker.svelte'
 
-  let { itemId }: { itemId: number } = $props()
+  let { itemId }: { itemId: string } = $props()
 
   const cols = getCollections()
 
