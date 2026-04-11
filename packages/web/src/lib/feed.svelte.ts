@@ -1,43 +1,69 @@
-import { HnClient, FeedManager, type Story } from '@hackernews/core'
-
-const client = new HnClient()
-const feedManager = new FeedManager(client)
+import {
+  createSourceClient,
+  type SourceClient,
+  type ContentSource,
+  type FeedItem,
+} from '@hackernews/core'
 
 interface FeedCache {
-  stories: Story[]
+  items: FeedItem[]
   currentPage: number
 }
 
+const clients = new Map<ContentSource, SourceClient>()
 const cache = new Map<string, FeedCache>()
 
-let currentEndpoint = $state('')
-let stories = $state<Story[]>([])
+function getClient(source: ContentSource): SourceClient {
+  let client = clients.get(source)
+  if (!client) {
+    client = createSourceClient(source)
+    clients.set(source, client)
+  }
+  return client
+}
+
+let currentKey = $state('')
+let currentSource = $state<ContentSource>('hackernews')
+let currentFeedId = $state('top')
+let items = $state<FeedItem[]>([])
 let loading = $state(false)
 let loadingMore = $state(false)
 
 export function getFeedState() {
   return {
-    get stories() { return stories },
+    get items() { return items },
     get loading() { return loading },
     get loadingMore() { return loadingMore },
+    get source() { return currentSource },
+    get feedId() { return currentFeedId },
   }
 }
 
-export async function loadFeed(endpoint: string) {
-  if (endpoint === currentEndpoint && stories.length > 0) return
+export async function loadFeed(source: ContentSource, feedId: string) {
+  const key = `${source}:${feedId}`
+  if (key === currentKey && items.length > 0) return
 
-  currentEndpoint = endpoint
-  const cached = cache.get(endpoint)
+  currentKey = key
+  currentSource = source
+  currentFeedId = feedId
+
+  const cached = cache.get(key)
   if (cached) {
-    stories = cached.stories
+    items = cached.items
     loading = false
     return
   }
 
   loading = true
-  const result = await feedManager.fetchPage(endpoint, 0)
-  stories = result
-  cache.set(endpoint, { stories: result, currentPage: 0 })
+  try {
+    const client = getClient(source)
+    const result = await client.fetchFeed(feedId, 0)
+    items = result
+    cache.set(key, { items: result, currentPage: 0 })
+  } catch (err) {
+    console.error(`Failed to load ${source}/${feedId}:`, err)
+    items = []
+  }
   loading = false
 }
 
@@ -52,25 +78,38 @@ export async function refreshFeed() {
     customRefresh()
     return
   }
-  cache.delete(currentEndpoint)
-  feedManager.clearCache()
+  cache.delete(currentKey)
+  const client = getClient(currentSource)
+  if ('clearCache' in client && typeof (client as any).clearCache === 'function') {
+    (client as any).clearCache()
+  }
   loading = true
-  const result = await feedManager.fetchPage(currentEndpoint, 0)
-  stories = result
-  cache.set(currentEndpoint, { stories: result, currentPage: 0 })
+  try {
+    const result = await client.fetchFeed(currentFeedId, 0)
+    items = result
+    cache.set(currentKey, { items: result, currentPage: 0 })
+  } catch (err) {
+    console.error('Failed to refresh feed:', err)
+    items = []
+  }
   loading = false
 }
 
 export async function loadMore() {
   if (loadingMore || loading) return
-  const entry = cache.get(currentEndpoint)
+  const entry = cache.get(currentKey)
   if (!entry) return
 
   loadingMore = true
-  const nextPage = entry.currentPage + 1
-  const result = await feedManager.fetchPage(currentEndpoint, nextPage)
-  stories = [...stories, ...result]
-  entry.stories = stories
-  entry.currentPage = nextPage
+  try {
+    const nextPage = entry.currentPage + 1
+    const client = getClient(currentSource)
+    const result = await client.fetchFeed(currentFeedId, nextPage)
+    items = [...items, ...result]
+    entry.items = items
+    entry.currentPage = nextPage
+  } catch (err) {
+    console.error('Failed to load more:', err)
+  }
   loadingMore = false
 }
