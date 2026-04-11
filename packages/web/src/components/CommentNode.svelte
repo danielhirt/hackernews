@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Comment } from '@hackernews/core'
+  import type { CommentItem } from '@hackernews/core'
   import { timeAgo } from '$lib/time'
   import CommentTree from './CommentTree.svelte'
 
@@ -9,14 +9,15 @@
     focusPath = [],
     onfocus,
   }: {
-    comment: Comment
+    comment: CommentItem
     depth?: number
-    focusPath?: number[]
-    onfocus?: (id: number) => void
+    focusPath?: string[]
+    onfocus?: (id: string) => void
   } = $props()
 
   let collapsed = $state(false)
   let isFocused = $derived(focusPath.includes(comment.id))
+  let isHn = $derived(comment.source === 'hackernews')
   let copied = $state(false)
 
   function stripHtml(html: string): string {
@@ -42,12 +43,17 @@
         <button class="collapse-toggle" onclick={() => (collapsed = !collapsed)}>
           {collapsed ? '[+]' : '[-]'}
         </button>
-        <a href="/user/{comment.by}" class="author">{comment.by}</a>
-        <span class="time">{timeAgo(comment.time)}</span>
+        {#if isHn}
+          <a href="/user/{comment.author}" class="author">{comment.author}</a>
+        {:else}
+          <span class="author">{comment.author}</span>
+        {/if}
+        <span class="time">{timeAgo(comment.timestamp)}</span>
+        {#if comment.score !== undefined}<span class="score">{comment.score} pts</span>{/if}
         <button class="copy-btn" onclick={copyComment} title="Copy comment">
           {copied ? '✓' : '⧉'}
         </button>
-        {#if onfocus && comment.kids?.length}
+        {#if onfocus && comment.children.length}
           <button class="focus-btn" onclick={() => onfocus(comment.id)} title="Focus thread">
             [f]
           </button>
@@ -55,9 +61,9 @@
       </div>
       {#if !collapsed}
         <div class="comment-body">{@html comment.text}</div>
-        {#if comment.kids?.length}
+        {#if comment.children.length}
           <CommentTree
-            commentIds={comment.kids}
+            comments={comment.children}
             depth={depth + 1}
             {focusPath}
             {onfocus}
@@ -65,7 +71,7 @@
         {/if}
       {:else}
         <span class="collapsed-hint">
-          {comment.kids?.length ?? 0} replies
+          {comment.children.length} replies
         </span>
       {/if}
     </div>
@@ -127,6 +133,11 @@
 
   .time {
     color: var(--color-text-faint);
+  }
+
+  .score {
+    color: var(--color-text-faint);
+    font-size: 0.8rem;
   }
 
   .copy-btn:hover,
