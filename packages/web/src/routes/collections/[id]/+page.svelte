@@ -1,13 +1,13 @@
 <script lang="ts">
   import { page } from '$app/state'
-  import { HnClient, type Story } from '@hackernews/core'
+  import { HnClient, type Story, type FeedItem, storyToFeedItem } from '@hackernews/core'
   import { getCollections, removeFromCollection } from '$lib/collections.svelte'
   import StoryCard from '../../../components/StoryCard.svelte'
 
   const client = new HnClient()
   const cols = getCollections()
 
-  let stories: Story[] = $state([])
+  let items: FeedItem[] = $state([])
   let loading = $state(true)
 
   let collectionId = $derived(page.params.id)
@@ -19,18 +19,21 @@
     }
   })
 
-  async function loadStories(ids: number[]) {
+  async function loadStories(ids: string[]) {
     loading = true
+    const numericIds = ids
+      .filter((id) => id.startsWith('hn:'))
+      .map((id) => Number(id.slice(3)))
     const results = await Promise.all(
-      ids.map((id) => client.fetchItem(id))
+      numericIds.map((id) => client.fetchItem(id))
     )
-    stories = results.filter(
-      (item): item is Story => item !== null && 'title' in item
-    )
+    items = results
+      .filter((item): item is Story => item !== null && 'title' in item)
+      .map(storyToFeedItem)
     loading = false
   }
 
-  async function handleRemove(itemId: number) {
+  async function handleRemove(itemId: string) {
     await removeFromCollection(collectionId, itemId)
   }
 </script>
@@ -45,13 +48,13 @@
 
     {#if loading}
       <p class="loading">Loading...</p>
-    {:else if stories.length === 0}
+    {:else if items.length === 0}
       <p class="empty">Empty.</p>
     {:else}
-      {#each stories as story, i (story.id)}
+      {#each items as item, i (item.id)}
         <div class="saved-story">
-          <StoryCard {story} index={i} />
-          <button class="remove-btn" onclick={() => handleRemove(story.id)}>[x]</button>
+          <StoryCard {item} index={i} />
+          <button class="remove-btn" onclick={() => handleRemove(item.id)}>[x]</button>
         </div>
       {/each}
     {/if}

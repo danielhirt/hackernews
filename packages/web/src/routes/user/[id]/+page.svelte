@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from '$app/state'
-  import { HnClient, type User, type Story, type Comment as HnComment, DEFAULT_COLLECTION_ID } from '@hackernews/core'
+  import { HnClient, type User, type Story, type Comment as HnComment, DEFAULT_COLLECTION_ID, storyToFeedItem } from '@hackernews/core'
   import { timeAgo } from '$lib/time'
   import { getCollections } from '$lib/collections.svelte'
   import { sortStories, sortComments, filterByPeriod, type SortBy, type FilterPeriod } from '$lib/sort-filter'
@@ -286,7 +286,7 @@
           <p class="status">No submissions.</p>
         {:else}
           {#each displayedSubmissions as story, i (story.id)}
-            <StoryCard {story} index={i} />
+            <StoryCard item={storyToFeedItem(story)} index={i} />
           {/each}
           {#if hasMoreSubmissions}
             <div class="sentinel" use:observeSentinel>
@@ -317,7 +317,7 @@
           <p class="status">No favorites.</p>
         {:else}
           {#each displayedFavorites as story, i (story.id)}
-            <StoryCard {story} index={i} />
+            <StoryCard item={storyToFeedItem(story)} index={i} />
           {/each}
           {#if hasMoreFavorites}
             <div class="sentinel" use:observeSentinel>

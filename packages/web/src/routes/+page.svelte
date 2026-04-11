@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from '$app/state'
-  import { FEED_ENDPOINTS, type FeedType } from '@hackernews/core'
+  import { type FeedType, type ContentSource, SOURCES } from '@hackernews/core'
   import StoryCard from '../components/StoryCard.svelte'
   import StoryCardSkeleton from '../components/StoryCardSkeleton.svelte'
   import { getKeyboardState } from '$lib/keyboard.svelte'
@@ -9,18 +9,20 @@
   const kb = getKeyboardState()
   const feed = getFeedState()
 
-  let feedType: FeedType = $derived(
-    (new URLSearchParams(page.url.search).get('feed') as FeedType) ?? 'top'
+  let source: ContentSource = $derived(
+    (new URLSearchParams(page.url.search).get('source') as ContentSource) ?? 'hackernews'
   )
 
-  let endpoint = $derived(FEED_ENDPOINTS[feedType])
+  let feedId: string = $derived(
+    new URLSearchParams(page.url.search).get('feed') ?? SOURCES.find(s => s.id === source)?.feeds[0]?.id ?? 'top'
+  )
 
   $effect(() => {
-    loadFeed(endpoint)
+    loadFeed(source, feedId)
   })
 
   $effect(() => {
-    kb.storyIds = feed.stories.map((s) => s.id)
+    kb.storyIds = feed.items.map((s) => s.id)
   })
 </script>
 
@@ -39,8 +41,8 @@
       <StoryCardSkeleton />
     {/each}
   {:else}
-    {#each feed.stories as story, i}
-      <StoryCard {story} index={i} selected={i === kb.selectedIndex} />
+    {#each feed.items as item, i}
+      <StoryCard {item} index={i} selected={i === kb.selectedIndex} />
     {/each}
     {#if feed.loadingMore}
       {#each Array(5) as _}

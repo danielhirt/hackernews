@@ -13,7 +13,7 @@ const feedKeys: Record<string, FeedType> = {
 
 interface KeyboardState {
   selectedIndex: number
-  storyIds: number[]
+  storyIds: string[]
   enabled: boolean
 }
 
@@ -28,7 +28,7 @@ export function getKeyboardState() {
     get selectedIndex() { return state.selectedIndex },
     set selectedIndex(v: number) { state.selectedIndex = v },
     get storyIds() { return state.storyIds },
-    set storyIds(v: number[]) { state.storyIds = v },
+    set storyIds(v: string[]) { state.storyIds = v },
   }
 }
 
@@ -68,12 +68,14 @@ export function handleKeydown(e: KeyboardEvent) {
       }
       break
     }
-    case 'c':
+    case 'c': {
       e.preventDefault()
-      if (state.storyIds[state.selectedIndex]) {
-        goto(`/item/${state.storyIds[state.selectedIndex]}`)
+      const id = state.storyIds[state.selectedIndex]
+      if (id?.startsWith('hn:')) {
+        goto(`/item/${id.slice(3)}`)
       }
       break
+    }
     case 's':
       e.preventDefault()
       const saveBtn = document.querySelector(

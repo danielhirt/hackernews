@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, fireEvent } from '@testing-library/svelte'
 import StoryCard from '../src/components/StoryCard.svelte'
-import type { Story } from '@hackernews/core'
+import type { FeedItem } from '@hackernews/core'
 
 const mockGetSummary = vi.fn(() => undefined as string | undefined)
 const mockSaveSummary = vi.fn()
@@ -35,15 +35,17 @@ vi.mock('$app/environment', () => ({
   browser: false,
 }))
 
-function makeStory(overrides: Partial<Story> = {}): Story {
+function makeItem(overrides: Partial<FeedItem> = {}): FeedItem {
   return {
-    id: 1,
+    id: 'hn:1',
+    source: 'hackernews',
     title: 'Test Story',
     score: 42,
-    by: 'testuser',
-    time: Math.floor(Date.now() / 1000) - 3600,
-    descendants: 5,
-    type: 'story',
+    author: 'testuser',
+    timestamp: Math.floor(Date.now() / 1000) - 3600,
+    commentCount: 5,
+    sourceUrl: 'https://news.ycombinator.com/item?id=1',
+    originalId: 1,
     ...overrides,
   }
 }
@@ -52,7 +54,7 @@ describe('StoryCard text toggle', () => {
   describe('toggle button', () => {
     it('renders the toggle button on every card', () => {
       const { container } = render(StoryCard, {
-        props: { story: makeStory(), index: 0 },
+        props: { item: makeItem(), index: 0 },
       })
       const toggle = container.querySelector('.text-toggle')
       expect(toggle).toBeTruthy()
@@ -60,7 +62,7 @@ describe('StoryCard text toggle', () => {
 
     it('shows ▸ when panel is closed', () => {
       const { container } = render(StoryCard, {
-        props: { story: makeStory(), index: 0 },
+        props: { item: makeItem(), index: 0 },
       })
       const toggle = container.querySelector('.text-toggle')!
       expect(toggle.textContent).toBe('▸')
@@ -68,7 +70,7 @@ describe('StoryCard text toggle', () => {
 
     it('shows ▾ when panel is open', async () => {
       const { container } = render(StoryCard, {
-        props: { story: makeStory(), index: 0 },
+        props: { item: makeItem(), index: 0 },
       })
       const toggle = container.querySelector('.text-toggle')!
       await fireEvent.click(toggle)
@@ -77,7 +79,7 @@ describe('StoryCard text toggle', () => {
 
     it('has title "Show post text" when story has text', () => {
       const { container } = render(StoryCard, {
-        props: { story: makeStory({ text: '<p>Hello</p>' }), index: 0 },
+        props: { item: makeItem({ text: '<p>Hello</p>' }), index: 0 },
       })
       const toggle = container.querySelector('.text-toggle')!
       expect(toggle.getAttribute('title')).toBe('Show post text')
@@ -85,7 +87,7 @@ describe('StoryCard text toggle', () => {
 
     it('has title "No post content" when story has no text', () => {
       const { container } = render(StoryCard, {
-        props: { story: makeStory(), index: 0 },
+        props: { item: makeItem(), index: 0 },
       })
       const toggle = container.querySelector('.text-toggle')!
       expect(toggle.getAttribute('title')).toBe('No post content')
@@ -93,7 +95,7 @@ describe('StoryCard text toggle', () => {
 
     it('has .has-text class when story.text exists', () => {
       const { container } = render(StoryCard, {
-        props: { story: makeStory({ text: '<p>Content</p>' }), index: 0 },
+        props: { item: makeItem({ text: '<p>Content</p>' }), index: 0 },
       })
       const toggle = container.querySelector('.text-toggle')!
       expect(toggle.classList.contains('has-text')).toBe(true)
@@ -101,7 +103,7 @@ describe('StoryCard text toggle', () => {
 
     it('does not have .has-text class when story.text is absent', () => {
       const { container } = render(StoryCard, {
-        props: { story: makeStory(), index: 0 },
+        props: { item: makeItem(), index: 0 },
       })
       const toggle = container.querySelector('.text-toggle')!
       expect(toggle.classList.contains('has-text')).toBe(false)
@@ -111,14 +113,14 @@ describe('StoryCard text toggle', () => {
   describe('text panel', () => {
     it('is hidden by default', () => {
       const { container } = render(StoryCard, {
-        props: { story: makeStory({ text: '<p>Content</p>' }), index: 0 },
+        props: { item: makeItem({ text: '<p>Content</p>' }), index: 0 },
       })
       expect(container.querySelector('.text-panel')).toBeNull()
     })
 
     it('opens when toggle is clicked', async () => {
       const { container } = render(StoryCard, {
-        props: { story: makeStory({ text: '<p>Content</p>' }), index: 0 },
+        props: { item: makeItem({ text: '<p>Content</p>' }), index: 0 },
       })
       await fireEvent.click(container.querySelector('.text-toggle')!)
       expect(container.querySelector('.text-panel')).toBeTruthy()
@@ -126,7 +128,7 @@ describe('StoryCard text toggle', () => {
 
     it('closes when toggle is clicked again', async () => {
       const { container } = render(StoryCard, {
-        props: { story: makeStory({ text: '<p>Content</p>' }), index: 0 },
+        props: { item: makeItem({ text: '<p>Content</p>' }), index: 0 },
       })
       const toggle = container.querySelector('.text-toggle')!
       await fireEvent.click(toggle)
@@ -138,7 +140,7 @@ describe('StoryCard text toggle', () => {
     it('renders story.text as HTML when present', async () => {
       const { container } = render(StoryCard, {
         props: {
-          story: makeStory({ text: '<p>This is <b>bold</b> content</p>' }),
+          item: makeItem({ text: '<p>This is <b>bold</b> content</p>' }),
           index: 0,
         },
       })
@@ -149,7 +151,7 @@ describe('StoryCard text toggle', () => {
 
     it('shows "No post content." when story has no text', async () => {
       const { container } = render(StoryCard, {
-        props: { story: makeStory(), index: 0 },
+        props: { item: makeItem(), index: 0 },
       })
       await fireEvent.click(container.querySelector('.text-toggle')!)
       const noContent = container.querySelector('.no-content')!
@@ -158,7 +160,7 @@ describe('StoryCard text toggle', () => {
 
     it('does not show panel-actions when story has no text', async () => {
       const { container } = render(StoryCard, {
-        props: { story: makeStory(), index: 0 },
+        props: { item: makeItem(), index: 0 },
       })
       await fireEvent.click(container.querySelector('.text-toggle')!)
       expect(container.querySelector('.panel-actions')).toBeNull()
@@ -166,7 +168,7 @@ describe('StoryCard text toggle', () => {
 
     it('shows panel-actions when story has text', async () => {
       const { container } = render(StoryCard, {
-        props: { story: makeStory({ text: '<p>Content</p>' }), index: 0 },
+        props: { item: makeItem({ text: '<p>Content</p>' }), index: 0 },
       })
       await fireEvent.click(container.querySelector('.text-toggle')!)
       expect(container.querySelector('.panel-actions')).toBeTruthy()
@@ -176,7 +178,7 @@ describe('StoryCard text toggle', () => {
   describe('expand/collapse controls', () => {
     it('shows "Show more" button by default', async () => {
       const { container } = render(StoryCard, {
-        props: { story: makeStory({ text: '<p>Content</p>' }), index: 0 },
+        props: { item: makeItem({ text: '<p>Content</p>' }), index: 0 },
       })
       await fireEvent.click(container.querySelector('.text-toggle')!)
       const buttons = container.querySelectorAll('.expand-toggle')
@@ -185,7 +187,7 @@ describe('StoryCard text toggle', () => {
 
     it('shows "Collapse" button alongside "Show more"', async () => {
       const { container } = render(StoryCard, {
-        props: { story: makeStory({ text: '<p>Content</p>' }), index: 0 },
+        props: { item: makeItem({ text: '<p>Content</p>' }), index: 0 },
       })
       await fireEvent.click(container.querySelector('.text-toggle')!)
       const buttons = container.querySelectorAll('.expand-toggle')
@@ -195,7 +197,7 @@ describe('StoryCard text toggle', () => {
 
     it('toggles text-content to expanded on "Show more" click', async () => {
       const { container } = render(StoryCard, {
-        props: { story: makeStory({ text: '<p>Content</p>' }), index: 0 },
+        props: { item: makeItem({ text: '<p>Content</p>' }), index: 0 },
       })
       await fireEvent.click(container.querySelector('.text-toggle')!)
       const content = container.querySelector('.text-content')!
@@ -208,7 +210,7 @@ describe('StoryCard text toggle', () => {
 
     it('changes "Show more" to "Show less" when expanded', async () => {
       const { container } = render(StoryCard, {
-        props: { story: makeStory({ text: '<p>Content</p>' }), index: 0 },
+        props: { item: makeItem({ text: '<p>Content</p>' }), index: 0 },
       })
       await fireEvent.click(container.querySelector('.text-toggle')!)
       const showMore = container.querySelectorAll('.expand-toggle')[0]
@@ -218,7 +220,7 @@ describe('StoryCard text toggle', () => {
 
     it('collapses back to preview on "Show less" click', async () => {
       const { container } = render(StoryCard, {
-        props: { story: makeStory({ text: '<p>Content</p>' }), index: 0 },
+        props: { item: makeItem({ text: '<p>Content</p>' }), index: 0 },
       })
       await fireEvent.click(container.querySelector('.text-toggle')!)
       const toggle = container.querySelectorAll('.expand-toggle')[0]
@@ -231,7 +233,7 @@ describe('StoryCard text toggle', () => {
 
     it('closes the entire panel on "Collapse" click', async () => {
       const { container } = render(StoryCard, {
-        props: { story: makeStory({ text: '<p>Content</p>' }), index: 0 },
+        props: { item: makeItem({ text: '<p>Content</p>' }), index: 0 },
       })
       await fireEvent.click(container.querySelector('.text-toggle')!)
       expect(container.querySelector('.text-panel')).toBeTruthy()
@@ -243,7 +245,7 @@ describe('StoryCard text toggle', () => {
 
     it('resets expanded state when panel is closed via toggle icon', async () => {
       const { container } = render(StoryCard, {
-        props: { story: makeStory({ text: '<p>Content</p>' }), index: 0 },
+        props: { item: makeItem({ text: '<p>Content</p>' }), index: 0 },
       })
       const toggleBtn = container.querySelector('.text-toggle')!
 
@@ -264,7 +266,7 @@ describe('StoryCard text toggle', () => {
 
     it('resets expanded state when panel is closed via Collapse button', async () => {
       const { container } = render(StoryCard, {
-        props: { story: makeStory({ text: '<p>Content</p>' }), index: 0 },
+        props: { item: makeItem({ text: '<p>Content</p>' }), index: 0 },
       })
       const toggleBtn = container.querySelector('.text-toggle')!
 
@@ -285,7 +287,7 @@ describe('StoryCard text toggle', () => {
   describe('toggle icon reflects panel state', () => {
     it('reverts to ▸ after Collapse', async () => {
       const { container } = render(StoryCard, {
-        props: { story: makeStory({ text: '<p>Content</p>' }), index: 0 },
+        props: { item: makeItem({ text: '<p>Content</p>' }), index: 0 },
       })
       const toggleBtn = container.querySelector('.text-toggle')!
       await fireEvent.click(toggleBtn)
@@ -297,7 +299,7 @@ describe('StoryCard text toggle', () => {
 
     it('has .active class when panel is open', async () => {
       const { container } = render(StoryCard, {
-        props: { story: makeStory({ text: '<p>Content</p>' }), index: 0 },
+        props: { item: makeItem({ text: '<p>Content</p>' }), index: 0 },
       })
       const toggleBtn = container.querySelector('.text-toggle')!
       expect(toggleBtn.classList.contains('active')).toBe(false)
@@ -307,7 +309,7 @@ describe('StoryCard text toggle', () => {
 
     it('loses .active class when panel is closed', async () => {
       const { container } = render(StoryCard, {
-        props: { story: makeStory({ text: '<p>Content</p>' }), index: 0 },
+        props: { item: makeItem({ text: '<p>Content</p>' }), index: 0 },
       })
       const toggleBtn = container.querySelector('.text-toggle')!
       await fireEvent.click(toggleBtn)
@@ -327,7 +329,7 @@ describe('StoryCard AI summary', () => {
   describe('AI button', () => {
     it('renders the ✦ button on every card', () => {
       const { container } = render(StoryCard, {
-        props: { story: makeStory(), index: 0 },
+        props: { item: makeItem(), index: 0 },
       })
       const btn = container.querySelector('.ai-toggle')
       expect(btn).toBeTruthy()
@@ -336,7 +338,7 @@ describe('StoryCard AI summary', () => {
 
     it('has title "AI summary"', () => {
       const { container } = render(StoryCard, {
-        props: { story: makeStory(), index: 0 },
+        props: { item: makeItem(), index: 0 },
       })
       expect(container.querySelector('.ai-toggle')!.getAttribute('title')).toBe('AI summary')
     })
@@ -344,7 +346,7 @@ describe('StoryCard AI summary', () => {
     it('opens the panel when clicked', async () => {
       vi.mocked(fetch).mockResolvedValueOnce(new Response('Summary text', { status: 200 }))
       const { container } = render(StoryCard, {
-        props: { story: makeStory(), index: 0 },
+        props: { item: makeItem(), index: 0 },
       })
       expect(container.querySelector('.text-panel')).toBeNull()
       await fireEvent.click(container.querySelector('.ai-toggle')!)
@@ -354,7 +356,7 @@ describe('StoryCard AI summary', () => {
     it('does not show "No post content." when AI summary is loading', async () => {
       vi.mocked(fetch).mockReturnValueOnce(new Promise(() => {})) // never resolves
       const { container } = render(StoryCard, {
-        props: { story: makeStory(), index: 0 },
+        props: { item: makeItem(), index: 0 },
       })
       await fireEvent.click(container.querySelector('.ai-toggle')!)
       expect(container.querySelector('.no-content')).toBeNull()
@@ -365,7 +367,7 @@ describe('StoryCard AI summary', () => {
     it('shows loading cursor while fetching', async () => {
       vi.mocked(fetch).mockReturnValueOnce(new Promise(() => {}))
       const { container } = render(StoryCard, {
-        props: { story: makeStory(), index: 0 },
+        props: { item: makeItem(), index: 0 },
       })
       await fireEvent.click(container.querySelector('.ai-toggle')!)
       expect(container.querySelector('.summary-spinner')).toBeTruthy()
@@ -374,7 +376,7 @@ describe('StoryCard AI summary', () => {
     it('shows "AI Summary" label', async () => {
       vi.mocked(fetch).mockReturnValueOnce(new Promise(() => {}))
       const { container } = render(StoryCard, {
-        props: { story: makeStory(), index: 0 },
+        props: { item: makeItem(), index: 0 },
       })
       await fireEvent.click(container.querySelector('.ai-toggle')!)
       expect(container.querySelector('.summary-label')!.textContent).toBe('AI Summary')
@@ -383,7 +385,7 @@ describe('StoryCard AI summary', () => {
     it('displays summary text after successful fetch', async () => {
       vi.mocked(fetch).mockResolvedValueOnce(new Response('# Hello\nThis is a summary.', { status: 200 }))
       const { container } = render(StoryCard, {
-        props: { story: makeStory(), index: 0 },
+        props: { item: makeItem(), index: 0 },
       })
       await fireEvent.click(container.querySelector('.ai-toggle')!)
       // Wait for the async fetch to resolve
@@ -396,7 +398,7 @@ describe('StoryCard AI summary', () => {
     it('saves summary to cache on success', async () => {
       vi.mocked(fetch).mockResolvedValueOnce(new Response('cached text', { status: 200 }))
       const { container } = render(StoryCard, {
-        props: { story: makeStory({ id: 42 }), index: 0 },
+        props: { item: makeItem({ id: 'hn:42', originalId: 42 }), index: 0 },
       })
       await fireEvent.click(container.querySelector('.ai-toggle')!)
       await vi.waitFor(() => {
@@ -407,7 +409,7 @@ describe('StoryCard AI summary', () => {
     it('shows error on failed fetch', async () => {
       vi.mocked(fetch).mockResolvedValueOnce(new Response('Story not found', { status: 404 }))
       const { container } = render(StoryCard, {
-        props: { story: makeStory(), index: 0 },
+        props: { item: makeItem(), index: 0 },
       })
       await fireEvent.click(container.querySelector('.ai-toggle')!)
       await vi.waitFor(() => {
@@ -419,7 +421,7 @@ describe('StoryCard AI summary', () => {
     it('shows error on network failure', async () => {
       vi.mocked(fetch).mockRejectedValueOnce(new Error('Network error'))
       const { container } = render(StoryCard, {
-        props: { story: makeStory(), index: 0 },
+        props: { item: makeItem(), index: 0 },
       })
       await fireEvent.click(container.querySelector('.ai-toggle')!)
       await vi.waitFor(() => {
@@ -431,7 +433,7 @@ describe('StoryCard AI summary', () => {
     it('sends correct payload to /api/summarize', async () => {
       vi.mocked(fetch).mockResolvedValueOnce(new Response('ok', { status: 200 }))
       const { container } = render(StoryCard, {
-        props: { story: makeStory({ id: 99 }), index: 0 },
+        props: { item: makeItem({ id: 'hn:99', originalId: 99 }), index: 0 },
       })
       await fireEvent.click(container.querySelector('.ai-toggle')!)
       expect(fetch).toHaveBeenCalledWith('/api/summarize', {
@@ -446,7 +448,7 @@ describe('StoryCard AI summary', () => {
     it('shows Show more, Regenerate, and Dismiss after loading', async () => {
       vi.mocked(fetch).mockResolvedValueOnce(new Response('summary', { status: 200 }))
       const { container } = render(StoryCard, {
-        props: { story: makeStory(), index: 0 },
+        props: { item: makeItem(), index: 0 },
       })
       await fireEvent.click(container.querySelector('.ai-toggle')!)
       await vi.waitFor(() => {
@@ -464,7 +466,7 @@ describe('StoryCard AI summary', () => {
     it('toggles summary expanded state on Show more click', async () => {
       vi.mocked(fetch).mockResolvedValueOnce(new Response('summary', { status: 200 }))
       const { container } = render(StoryCard, {
-        props: { story: makeStory(), index: 0 },
+        props: { item: makeItem(), index: 0 },
       })
       await fireEvent.click(container.querySelector('.ai-toggle')!)
       await vi.waitFor(() => {
@@ -482,7 +484,7 @@ describe('StoryCard AI summary', () => {
     it('clears summary on Dismiss click', async () => {
       vi.mocked(fetch).mockResolvedValueOnce(new Response('summary', { status: 200 }))
       const { container } = render(StoryCard, {
-        props: { story: makeStory({ id: 7 }), index: 0 },
+        props: { item: makeItem({ id: 'hn:7', originalId: 7 }), index: 0 },
       })
       await fireEvent.click(container.querySelector('.ai-toggle')!)
       await vi.waitFor(() => {
@@ -499,7 +501,7 @@ describe('StoryCard AI summary', () => {
         .mockResolvedValueOnce(new Response('first', { status: 200 }))
         .mockResolvedValueOnce(new Response('second', { status: 200 }))
       const { container } = render(StoryCard, {
-        props: { story: makeStory(), index: 0 },
+        props: { item: makeItem(), index: 0 },
       })
       await fireEvent.click(container.querySelector('.ai-toggle')!)
       await vi.waitFor(() => {
@@ -515,7 +517,7 @@ describe('StoryCard AI summary', () => {
     it('does not show controls while loading', async () => {
       vi.mocked(fetch).mockReturnValueOnce(new Promise(() => {}))
       const { container } = render(StoryCard, {
-        props: { story: makeStory(), index: 0 },
+        props: { item: makeItem(), index: 0 },
       })
       await fireEvent.click(container.querySelector('.ai-toggle')!)
       const section = container.querySelector('.summary-section')!
@@ -527,7 +529,7 @@ describe('StoryCard AI summary', () => {
     it('does not re-fetch if cached summary exists', async () => {
       mockGetSummary.mockReturnValue('cached summary')
       const { container } = render(StoryCard, {
-        props: { story: makeStory(), index: 0 },
+        props: { item: makeItem(), index: 0 },
       })
       await fireEvent.click(container.querySelector('.ai-toggle')!)
       expect(fetch).not.toHaveBeenCalled()
@@ -536,7 +538,7 @@ describe('StoryCard AI summary', () => {
     it('displays cached summary when panel opens', async () => {
       mockGetSummary.mockReturnValue('cached summary')
       const { container } = render(StoryCard, {
-        props: { story: makeStory(), index: 0 },
+        props: { item: makeItem(), index: 0 },
       })
       await fireEvent.click(container.querySelector('.ai-toggle')!)
       expect(container.querySelector('.summary-content')).toBeTruthy()
@@ -546,7 +548,7 @@ describe('StoryCard AI summary', () => {
     it('has .active class on AI button when summary is cached', () => {
       mockGetSummary.mockReturnValue('cached')
       const { container } = render(StoryCard, {
-        props: { story: makeStory(), index: 0 },
+        props: { item: makeItem(), index: 0 },
       })
       expect(container.querySelector('.ai-toggle')!.classList.contains('active')).toBe(true)
     })
@@ -556,7 +558,7 @@ describe('StoryCard AI summary', () => {
     it('shows both OP text and summary in the same panel', async () => {
       mockGetSummary.mockReturnValue('summary here')
       const { container } = render(StoryCard, {
-        props: { story: makeStory({ text: '<p>OP text</p>' }), index: 0 },
+        props: { item: makeItem({ text: '<p>OP text</p>' }), index: 0 },
       })
       await fireEvent.click(container.querySelector('.text-toggle')!)
       expect(container.querySelector('.text-content')).toBeTruthy()
@@ -566,7 +568,7 @@ describe('StoryCard AI summary', () => {
     it('shows summary section separated from OP text', async () => {
       mockGetSummary.mockReturnValue('summary here')
       const { container } = render(StoryCard, {
-        props: { story: makeStory({ text: '<p>OP text</p>' }), index: 0 },
+        props: { item: makeItem({ text: '<p>OP text</p>' }), index: 0 },
       })
       await fireEvent.click(container.querySelector('.text-toggle')!)
       const section = container.querySelector('.summary-section')!
@@ -576,7 +578,7 @@ describe('StoryCard AI summary', () => {
     it('has divider when both OP text and summary exist', async () => {
       mockGetSummary.mockReturnValue('summary')
       const { container } = render(StoryCard, {
-        props: { story: makeStory({ text: '<p>text</p>' }), index: 0 },
+        props: { item: makeItem({ text: '<p>text</p>' }), index: 0 },
       })
       await fireEvent.click(container.querySelector('.text-toggle')!)
       expect(container.querySelector('.summary-section')!.classList.contains('has-divider')).toBe(true)
@@ -585,7 +587,7 @@ describe('StoryCard AI summary', () => {
     it('has no divider when only summary exists (no OP text)', async () => {
       mockGetSummary.mockReturnValue('summary')
       const { container } = render(StoryCard, {
-        props: { story: makeStory(), index: 0 },
+        props: { item: makeItem(), index: 0 },
       })
       await fireEvent.click(container.querySelector('.ai-toggle')!)
       expect(container.querySelector('.summary-section')!.classList.contains('has-divider')).toBe(false)
@@ -602,7 +604,7 @@ describe('StoryCard AI summary', () => {
     it('shows Copy button when summary is loaded', async () => {
       vi.mocked(fetch).mockResolvedValueOnce(new Response('summary', { status: 200 }))
       const { container } = render(StoryCard, {
-        props: { story: makeStory(), index: 0 },
+        props: { item: makeItem(), index: 0 },
       })
       await fireEvent.click(container.querySelector('.ai-toggle')!)
       await vi.waitFor(() => {
@@ -615,7 +617,7 @@ describe('StoryCard AI summary', () => {
     it('copies summary text to clipboard on click', async () => {
       vi.mocked(fetch).mockResolvedValueOnce(new Response('summary to copy', { status: 200 }))
       const { container } = render(StoryCard, {
-        props: { story: makeStory(), index: 0 },
+        props: { item: makeItem(), index: 0 },
       })
       await fireEvent.click(container.querySelector('.ai-toggle')!)
       await vi.waitFor(() => {
@@ -629,7 +631,7 @@ describe('StoryCard AI summary', () => {
     it('shows "Copied!" feedback after clicking', async () => {
       vi.mocked(fetch).mockResolvedValueOnce(new Response('text', { status: 200 }))
       const { container } = render(StoryCard, {
-        props: { story: makeStory(), index: 0 },
+        props: { item: makeItem(), index: 0 },
       })
       await fireEvent.click(container.querySelector('.ai-toggle')!)
       await vi.waitFor(() => {
@@ -645,7 +647,7 @@ describe('StoryCard AI summary', () => {
     it('renders links with underline in OP text', async () => {
       const { container } = render(StoryCard, {
         props: {
-          story: makeStory({ text: '<p>Check <a href="https://example.com">this</a></p>' }),
+          item: makeItem({ text: '<p>Check <a href="https://example.com">this</a></p>' }),
           index: 0,
         },
       })
@@ -658,7 +660,7 @@ describe('StoryCard AI summary', () => {
   describe('OP Comment label', () => {
     it('shows "OP Comment" label when story has text', async () => {
       const { container } = render(StoryCard, {
-        props: { story: makeStory({ text: '<p>Content</p>' }), index: 0 },
+        props: { item: makeItem({ text: '<p>Content</p>' }), index: 0 },
       })
       await fireEvent.click(container.querySelector('.text-toggle')!)
       const label = container.querySelector('.section-label')
@@ -668,7 +670,7 @@ describe('StoryCard AI summary', () => {
 
     it('does not show "OP Comment" label when story has no text', async () => {
       const { container } = render(StoryCard, {
-        props: { story: makeStory(), index: 0 },
+        props: { item: makeItem(), index: 0 },
       })
       await fireEvent.click(container.querySelector('.text-toggle')!)
       expect(container.querySelector('.section-label')).toBeNull()
@@ -679,7 +681,7 @@ describe('StoryCard AI summary', () => {
     it('is disabled while summary is loading', async () => {
       vi.mocked(fetch).mockReturnValueOnce(new Promise(() => {}))
       const { container } = render(StoryCard, {
-        props: { story: makeStory(), index: 0 },
+        props: { item: makeItem(), index: 0 },
       })
       const btn = container.querySelector('.ai-toggle') as HTMLButtonElement
       await fireEvent.click(btn)
@@ -688,7 +690,7 @@ describe('StoryCard AI summary', () => {
 
     it('is not disabled when idle', () => {
       const { container } = render(StoryCard, {
-        props: { story: makeStory(), index: 0 },
+        props: { item: makeItem(), index: 0 },
       })
       const btn = container.querySelector('.ai-toggle') as HTMLButtonElement
       expect(btn.disabled).toBe(false)
@@ -697,7 +699,7 @@ describe('StoryCard AI summary', () => {
     it('is not disabled after fetch completes', async () => {
       vi.mocked(fetch).mockResolvedValueOnce(new Response('done', { status: 200 }))
       const { container } = render(StoryCard, {
-        props: { story: makeStory(), index: 0 },
+        props: { item: makeItem(), index: 0 },
       })
       const btn = container.querySelector('.ai-toggle') as HTMLButtonElement
       await fireEvent.click(btn)
@@ -711,7 +713,7 @@ describe('StoryCard AI summary', () => {
     it('keeps panel open with OP text visible after summary dismiss', async () => {
       vi.mocked(fetch).mockResolvedValueOnce(new Response('summary', { status: 200 }))
       const { container } = render(StoryCard, {
-        props: { story: makeStory({ text: '<p>OP text</p>' }), index: 0 },
+        props: { item: makeItem({ text: '<p>OP text</p>' }), index: 0 },
       })
       await fireEvent.click(container.querySelector('.ai-toggle')!)
       await vi.waitFor(() => {
@@ -731,7 +733,7 @@ describe('StoryCard AI summary', () => {
     it('expands summary without expanding OP text', async () => {
       mockGetSummary.mockReturnValue('cached summary')
       const { container } = render(StoryCard, {
-        props: { story: makeStory({ text: '<p>OP text</p>' }), index: 0 },
+        props: { item: makeItem({ text: '<p>OP text</p>' }), index: 0 },
       })
       await fireEvent.click(container.querySelector('.text-toggle')!)
       // Expand summary only
@@ -745,7 +747,7 @@ describe('StoryCard AI summary', () => {
     it('expands OP text without expanding summary', async () => {
       mockGetSummary.mockReturnValue('cached summary')
       const { container } = render(StoryCard, {
-        props: { story: makeStory({ text: '<p>OP text</p>' }), index: 0 },
+        props: { item: makeItem({ text: '<p>OP text</p>' }), index: 0 },
       })
       await fireEvent.click(container.querySelector('.text-toggle')!)
       // Expand OP text only
@@ -760,7 +762,7 @@ describe('StoryCard AI summary', () => {
   describe('text panel background', () => {
     it('renders text-panel element when open', async () => {
       const { container } = render(StoryCard, {
-        props: { story: makeStory({ text: '<p>Content</p>' }), index: 0 },
+        props: { item: makeItem({ text: '<p>Content</p>' }), index: 0 },
       })
       await fireEvent.click(container.querySelector('.text-toggle')!)
       const panel = container.querySelector('.text-panel')
