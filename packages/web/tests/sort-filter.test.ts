@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import type { Story, Comment } from '@hackernews/core'
+import type { Story, Comment, CommentItem } from '@hackernews/core'
 import {
   periodCutoff,
   filterByPeriod,
   sortStories,
   sortComments,
+  sortCommentTree,
 } from '../src/lib/sort-filter'
 
 function makeStory(overrides: Partial<Story> & { id: number }): Story {
@@ -173,5 +174,101 @@ describe('sortComments', () => {
 
   it('handles empty array', () => {
     expect(sortComments([], 'newest')).toEqual([])
+  })
+})
+
+describe('sortCommentTree', () => {
+  function makeCommentItem(overrides: Partial<CommentItem> & { id: string }): CommentItem {
+    return {
+      source: 'hackernews',
+      text: 'test',
+      author: 'user',
+      timestamp: 1000,
+      children: [],
+      depth: 0,
+      ...overrides,
+    }
+  }
+
+  it('returns items unchanged in default mode', () => {
+    const items = [
+      makeCommentItem({ id: 'a', timestamp: 300 }),
+      makeCommentItem({ id: 'b', timestamp: 100 }),
+      makeCommentItem({ id: 'c', timestamp: 500 }),
+    ]
+    const result = sortCommentTree(items, 'default')
+    expect(result.map((c) => c.id)).toEqual(['a', 'b', 'c'])
+  })
+
+  it('sorts newest first', () => {
+    const items = [
+      makeCommentItem({ id: 'a', timestamp: 300 }),
+      makeCommentItem({ id: 'b', timestamp: 100 }),
+      makeCommentItem({ id: 'c', timestamp: 500 }),
+    ]
+    const result = sortCommentTree(items, 'newest')
+    expect(result.map((c) => c.id)).toEqual(['c', 'a', 'b'])
+  })
+
+  it('sorts oldest first', () => {
+    const items = [
+      makeCommentItem({ id: 'a', timestamp: 300 }),
+      makeCommentItem({ id: 'b', timestamp: 100 }),
+      makeCommentItem({ id: 'c', timestamp: 500 }),
+    ]
+    const result = sortCommentTree(items, 'oldest')
+    expect(result.map((c) => c.id)).toEqual(['b', 'a', 'c'])
+  })
+
+  it('sorts children recursively', () => {
+    const items = [
+      makeCommentItem({
+        id: 'parent',
+        timestamp: 100,
+        children: [
+          makeCommentItem({ id: 'child-old', timestamp: 200, depth: 1 }),
+          makeCommentItem({ id: 'child-new', timestamp: 400, depth: 1 }),
+          makeCommentItem({ id: 'child-mid', timestamp: 300, depth: 1 }),
+        ],
+      }),
+    ]
+    const result = sortCommentTree(items, 'newest')
+    expect(result[0].children.map((c) => c.id)).toEqual(['child-new', 'child-mid', 'child-old'])
+  })
+
+  it('sorts grandchildren recursively', () => {
+    const items = [
+      makeCommentItem({
+        id: 'root',
+        timestamp: 100,
+        children: [
+          makeCommentItem({
+            id: 'child',
+            timestamp: 200,
+            depth: 1,
+            children: [
+              makeCommentItem({ id: 'gc-old', timestamp: 300, depth: 2 }),
+              makeCommentItem({ id: 'gc-new', timestamp: 500, depth: 2 }),
+            ],
+          }),
+        ],
+      }),
+    ]
+    const result = sortCommentTree(items, 'oldest')
+    expect(result[0].children[0].children.map((c) => c.id)).toEqual(['gc-old', 'gc-new'])
+  })
+
+  it('does not mutate the original array', () => {
+    const items = [
+      makeCommentItem({ id: 'a', timestamp: 300 }),
+      makeCommentItem({ id: 'b', timestamp: 100 }),
+    ]
+    const original = items.map((i) => i.id)
+    sortCommentTree(items, 'newest')
+    expect(items.map((i) => i.id)).toEqual(original)
+  })
+
+  it('handles empty array', () => {
+    expect(sortCommentTree([], 'newest')).toEqual([])
   })
 })

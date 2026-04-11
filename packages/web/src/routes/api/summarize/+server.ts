@@ -60,25 +60,18 @@ function buildGenericPrompt(
   articleText: string,
   comments: { author: string; text: string }[],
 ): string {
-  let context = `Analyze the following post. Provide a concise summary covering:
-1. What the post/article is about (2-3 sentences)
-2. Key takeaways or interesting points
-3. Notable themes or perspectives from the discussion (if comments are present)
-
-Be direct and informative. Use markdown formatting.
-
-# "${title}"\n`
+  let context = `Summarize this post. Follow the format rules from your system prompt exactly.\n\nTitle: ${title}\n`
 
   if (text) {
-    context += `\n## Post text\n${text}\n`
+    context += `\nPost text:\n${text}\n`
   }
 
   if (articleText) {
-    context += `\n## Linked article content\n${articleText}\n`
+    context += `\nLinked article content:\n${articleText}\n`
   }
 
   if (comments.length > 0) {
-    context += `\n## Discussion (top comments)\n`
+    context += `\nTop comments:\n`
     for (const c of comments) {
       context += `- ${c.author}: ${c.text}\n`
     }
@@ -88,26 +81,18 @@ Be direct and informative. Use markdown formatting.
 }
 
 function buildPrompt(story: Story, articleText: string, comments: Comment[]): string {
-  let context = `Analyze the following Hacker News post. Provide a concise summary covering:
-1. What the post/article is about (2-3 sentences)
-2. Key takeaways or interesting points
-3. Notable themes or perspectives from the discussion (if comments are present)
-
-Be direct and informative. Use markdown formatting.
-
-# "${story.title}"
-By ${story.by} | ${story.score} points | ${story.descendants ?? 0} comments\n`
+  let context = `Summarize this post. Follow the format rules from your system prompt exactly.\n\nTitle: ${story.title}\nBy ${story.by} | ${story.score} points | ${story.descendants ?? 0} comments\n`
 
   if (story.text) {
-    context += `\n## Post text\n${stripHtml(story.text)}\n`
+    context += `\nPost text:\n${stripHtml(story.text)}\n`
   }
 
   if (articleText) {
-    context += `\n## Linked article content\n${articleText}\n`
+    context += `\nLinked article content:\n${articleText}\n`
   }
 
   if (comments.length > 0) {
-    context += `\n## Discussion (top comments)\n`
+    context += `\nTop comments:\n`
     for (const c of comments) {
       context += `- ${c.by}: ${stripHtml(c.text)}\n`
     }
@@ -123,8 +108,18 @@ const MODEL_MAP: Record<string, string> = {
 }
 
 const CLAUDE_TIMEOUT_MS = 90_000
-const SUMMARIZER_SYSTEM_PROMPT =
-  'You are a concise content summarizer for Hacker News. Output only the summary in markdown format, nothing else. No preamble, no sign-off.'
+const SUMMARIZER_SYSTEM_PROMPT = `You summarize technical posts and discussions. Output only the summary, nothing else. No preamble, no sign-off.
+
+FORMAT RULES (follow exactly):
+- Never use headings (#, ##, ###). Use **Bold Label** on its own line to start each section.
+- Never use horizontal rules (---).
+- Never repeat the post title.
+- Use exactly these sections in order:
+  1. **Overview** — 2-3 sentence summary of what the post/article covers.
+  2. **Key Points** — 3-6 bullet points. One line each, no sub-bullets.
+  3. **Discussion** — 2-4 bullet points summarizing notable comment perspectives. Only include this section if comments were provided.
+- Use plain bullet points (- ), no bold prefixes on individual bullets.
+- Keep the total summary under 200 words.`
 
 function runClaude(prompt: string, model = 'sonnet'): Promise<string> {
   const modelId = MODEL_MAP[model] ?? MODEL_MAP.sonnet

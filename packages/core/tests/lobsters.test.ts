@@ -136,4 +136,51 @@ describe('LobstersClient', () => {
       await expect(client.fetchFeed('hottest', 0)).rejects.toThrow('Lobsters API error: 503')
     })
   })
+
+  describe('fetchTag', () => {
+    it('fetches /t/{tag}.json for page 0', async () => {
+      const fetch = mockFetch([makeLobstersStory()])
+      const client = new LobstersClient(fetch as any)
+
+      await client.fetchTag('osdev', 0)
+
+      expect(fetch).toHaveBeenCalledWith('https://lobste.rs/t/osdev.json')
+    })
+
+    it('fetches /t/{tag}/page/2.json for page 1', async () => {
+      const fetch = mockFetch([makeLobstersStory()])
+      const client = new LobstersClient(fetch as any)
+
+      await client.fetchTag('rust', 1)
+
+      expect(fetch).toHaveBeenCalledWith('https://lobste.rs/t/rust/page/2.json')
+    })
+
+    it('returns FeedItem array', async () => {
+      const fetch = mockFetch([makeLobstersStory({ tags: ['osdev'] })])
+      const client = new LobstersClient(fetch as any)
+
+      const items = await client.fetchTag('osdev', 0)
+
+      expect(items).toHaveLength(1)
+      expect(items[0].source).toBe('lobsters')
+      expect(items[0].tags).toContain('osdev')
+    })
+
+    it('uses custom baseUrl', async () => {
+      const fetch = mockFetch([makeLobstersStory()])
+      const client = new LobstersClient(fetch as any, '/api/lobsters?path=')
+
+      await client.fetchTag('linux', 0)
+
+      expect(fetch).toHaveBeenCalledWith('/api/lobsters?path=/t/linux.json')
+    })
+
+    it('throws on non-ok response', async () => {
+      const fetch = vi.fn().mockResolvedValue({ ok: false, status: 404 })
+      const client = new LobstersClient(fetch as any)
+
+      await expect(client.fetchTag('nonexistent', 0)).rejects.toThrow('Lobsters API error: 404')
+    })
+  })
 })

@@ -148,4 +148,174 @@ describe('DevtoClient', () => {
       await expect(client.fetchFeed('top', 0)).rejects.toThrow('DEV API error: 422')
     })
   })
+
+  describe('fetchTag', () => {
+    it('fetches /articles?tag={tag} for page 0', async () => {
+      const fetch = mockFetch([makeDevtoArticle()])
+      const client = new DevtoClient(fetch as any)
+
+      await client.fetchTag('javascript', 0)
+
+      const url = (fetch as any).mock.calls[0][0] as string
+      expect(url).toContain('/articles?tag=javascript')
+      expect(url).toContain('page=1')
+      expect(url).toContain('per_page=30')
+    })
+
+    it('paginates correctly', async () => {
+      const fetch = mockFetch([makeDevtoArticle()])
+      const client = new DevtoClient(fetch as any)
+
+      await client.fetchTag('rust', 2)
+
+      const url = (fetch as any).mock.calls[0][0] as string
+      expect(url).toContain('tag=rust')
+      expect(url).toContain('page=3')
+    })
+
+    it('returns FeedItem array', async () => {
+      const fetch = mockFetch([makeDevtoArticle({ tag_list: ['typescript'] })])
+      const client = new DevtoClient(fetch as any)
+
+      const items = await client.fetchTag('typescript', 0)
+
+      expect(items).toHaveLength(1)
+      expect(items[0].source).toBe('devto')
+      expect(items[0].tags).toContain('typescript')
+    })
+
+    it('throws on non-ok response', async () => {
+      const fetch = vi.fn().mockResolvedValue({ ok: false, status: 500 })
+      const client = new DevtoClient(fetch as any)
+
+      await expect(client.fetchTag('bad', 0)).rejects.toThrow('DEV API error: 500')
+    })
+  })
+
+  describe('fetchArticle', () => {
+    it('fetches /articles/{id}', async () => {
+      const article = makeDevtoArticle({ id: 42 })
+      const fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(article),
+      })
+      const client = new DevtoClient(fetch as any)
+
+      await client.fetchArticle(42)
+
+      expect(fetch).toHaveBeenCalledWith('https://dev.to/api/articles/42')
+    })
+
+    it('returns a FeedItem', async () => {
+      const article = makeDevtoArticle({ id: 42, title: 'Single Article' })
+      const fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(article),
+      })
+      const client = new DevtoClient(fetch as any)
+
+      const item = await client.fetchArticle(42)
+
+      expect(item.id).toBe('dev:42')
+      expect(item.source).toBe('devto')
+      expect(item.title).toBe('Single Article')
+    })
+
+    it('throws on non-ok response', async () => {
+      const fetch = vi.fn().mockResolvedValue({ ok: false, status: 404 })
+      const client = new DevtoClient(fetch as any)
+
+      await expect(client.fetchArticle(999)).rejects.toThrow('DEV API error: 404')
+    })
+  })
+
+  describe('fetchComments', () => {
+    function makeRawComment(overrides = {}): any {
+      return {
+        id_code: 'abc',
+        body_html: '<p>Test comment</p>',
+        created_at: '2024-01-15T10:30:00Z',
+        user: { username: 'testuser', name: 'Test User' },
+        children: [],
+        ...overrides,
+      }
+    }
+
+    it('fetches /comments?a_id={articleId}', async () => {
+      const fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([]),
+      })
+      const client = new DevtoClient(fetch as any)
+
+      await client.fetchComments(42)
+
+      expect(fetch).toHaveBeenCalledWith('https://dev.to/api/comments?a_id=42')
+    })
+
+    it('maps top-level comments to CommentItem', async () => {
+      const fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([makeRawComment({ id_code: 'x1' })]),
+      })
+      const client = new DevtoClient(fetch as any)
+
+      const comments = await client.fetchComments(1)
+
+      expect(comments).toHaveLength(1)
+      expect(comments[0].id).toBe('dev:x1')
+      expect(comments[0].source).toBe('devto')
+      expect(comments[0].author).toBe('testuser')
+      expect(comments[0].text).toBe('<p>Test comment</p>')
+      expect(comments[0].depth).toBe(0)
+      expect(comments[0].children).toEqual([])
+    })
+
+    it('builds nested comment trees from children', async () => {
+      const nested = makeRawComment({
+        id_code: 'parent',
+        children: [
+          makeRawComment({
+            id_code: 'child',
+            children: [makeRawComment({ id_code: 'grandchild' })],
+          }),
+        ],
+      })
+      const fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([nested]),
+      })
+      const client = new DevtoClient(fetch as any)
+
+      const comments = await client.fetchComments(1)
+
+      expect(comments).toHaveLength(1)
+      expect(comments[0].id).toBe('dev:parent')
+      expect(comments[0].depth).toBe(0)
+      expect(comments[0].children).toHaveLength(1)
+      expect(comments[0].children[0].id).toBe('dev:child')
+      expect(comments[0].children[0].depth).toBe(1)
+      expect(comments[0].children[0].children[0].id).toBe('dev:grandchild')
+      expect(comments[0].children[0].children[0].depth).toBe(2)
+    })
+
+    it('returns empty array when no comments', async () => {
+      const fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([]),
+      })
+      const client = new DevtoClient(fetch as any)
+
+      const comments = await client.fetchComments(1)
+
+      expect(comments).toEqual([])
+    })
+
+    it('throws on non-ok response', async () => {
+      const fetch = vi.fn().mockResolvedValue({ ok: false, status: 500 })
+      const client = new DevtoClient(fetch as any)
+
+      await expect(client.fetchComments(1)).rejects.toThrow('DEV API error: 500')
+    })
+  })
 })

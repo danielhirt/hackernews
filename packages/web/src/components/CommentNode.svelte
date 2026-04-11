@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { CommentItem } from '@hackernews/core'
+  import { SOURCE_ID, type CommentItem } from '@hackernews/core'
   import { timeAgo } from '$lib/time'
   import CommentTree from './CommentTree.svelte'
 
@@ -8,16 +8,18 @@
     depth = 0,
     focusPath = [],
     onfocus,
+    defaultCollapsed = false,
   }: {
     comment: CommentItem
     depth?: number
     focusPath?: string[]
     onfocus?: (id: string) => void
+    defaultCollapsed?: boolean
   } = $props()
 
-  let collapsed = $state(false)
+  let collapsed = $state(defaultCollapsed)
   let isFocused = $derived(focusPath.includes(comment.id))
-  let isHn = $derived(comment.source === 'hackernews')
+  let isHn = $derived(comment.source === SOURCE_ID.HN)
   let copied = $state(false)
 
   function stripHtml(html: string): string {
@@ -67,6 +69,7 @@
             depth={depth + 1}
             {focusPath}
             {onfocus}
+            {defaultCollapsed}
           />
         {/if}
       {:else}

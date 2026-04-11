@@ -1,6 +1,7 @@
 import {
   createSourceClient,
   LobstersClient,
+  SOURCE_ID,
   type SourceClient,
   type ContentSource,
   type FeedItem,
@@ -9,6 +10,7 @@ import {
 interface FeedCache {
   items: FeedItem[]
   currentPage: number
+  exhausted: boolean
 }
 
 const clients = new Map<ContentSource, SourceClient>()
@@ -17,7 +19,7 @@ const cache = new Map<string, FeedCache>()
 function getClient(source: ContentSource): SourceClient {
   let client = clients.get(source)
   if (!client) {
-    if (source === 'lobsters') {
+    if (source === SOURCE_ID.LOBSTERS) {
       // Proxy through SvelteKit API route — Lobsters has no CORS headers
       client = new LobstersClient(undefined, '/api/lobsters?path=')
     } else {
@@ -31,6 +33,7 @@ function getClient(source: ContentSource): SourceClient {
 let currentKey = $state('')
 let currentSource = $state<ContentSource>('hackernews')
 let currentFeedId = $state('top')
+let currentTag = $state<string | null>(null)
 let items = $state<FeedItem[]>([])
 let loading = $state(false)
 let loadingMore = $state(false)
@@ -42,16 +45,19 @@ export function getFeedState() {
     get loadingMore() { return loadingMore },
     get source() { return currentSource },
     get feedId() { return currentFeedId },
+    get tag() { return currentTag },
   }
 }
 
-export async function loadFeed(source: ContentSource, feedId: string) {
-  const key = `${source}:${feedId}`
+export async function loadFeed(source: ContentSource, feedId: string, tag?: string | null) {
+  const key = tag ? `${source}:tag:${tag}` : `${source}:${feedId}`
   if (key === currentKey && items.length > 0) return
 
   currentKey = key
   currentSource = source
   currentFeedId = feedId
+  currentTag = tag ?? null
+  loadMoreCooldown = false
 
   const cached = cache.get(key)
   if (cached) {
@@ -63,9 +69,14 @@ export async function loadFeed(source: ContentSource, feedId: string) {
   loading = true
   try {
     const client = getClient(source)
-    const result = await client.fetchFeed(feedId, 0)
+    let result: FeedItem[]
+    if (tag && client.fetchTag) {
+      result = await client.fetchTag(tag, 0)
+    } else {
+      result = await client.fetchFeed(feedId, 0)
+    }
     items = result
-    cache.set(key, { items: result, currentPage: 0 })
+    cache.set(key, { items: result, currentPage: 0, exhausted: result.length === 0 })
   } catch (err) {
     console.error(`Failed to load ${source}/${feedId}:`, err)
     items = []
@@ -93,7 +104,7 @@ export async function refreshFeed() {
   try {
     const result = await client.fetchFeed(currentFeedId, 0)
     items = result
-    cache.set(currentKey, { items: result, currentPage: 0 })
+    cache.set(currentKey, { items: result, currentPage: 0, exhausted: result.length === 0 })
   } catch (err) {
     console.error('Failed to refresh feed:', err)
     items = []
@@ -101,21 +112,35 @@ export async function refreshFeed() {
   loading = false
 }
 
+let loadMoreCooldown = false
+
 export async function loadMore() {
-  if (loadingMore || loading) return
+  if (loadingMore || loading || loadMoreCooldown) return
   const entry = cache.get(currentKey)
-  if (!entry) return
+  if (!entry || entry.exhausted) return
 
   loadingMore = true
   try {
     const nextPage = entry.currentPage + 1
     const client = getClient(currentSource)
-    const result = await client.fetchFeed(currentFeedId, nextPage)
-    items = [...items, ...result]
-    entry.items = items
-    entry.currentPage = nextPage
+    let result: FeedItem[]
+    if (currentTag && client.fetchTag) {
+      result = await client.fetchTag(currentTag, nextPage)
+    } else {
+      result = await client.fetchFeed(currentFeedId, nextPage)
+    }
+    if (result.length === 0) {
+      entry.exhausted = true
+    } else {
+      items = [...items, ...result]
+      entry.items = items
+      entry.currentPage = nextPage
+    }
   } catch (err) {
     console.error('Failed to load more:', err)
+    // Back off to prevent retry storms on rate limits
+    loadMoreCooldown = true
+    setTimeout(() => { loadMoreCooldown = false }, 5000)
   }
   loadingMore = false
 }

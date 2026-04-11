@@ -1,4 +1,4 @@
-import type { FeedItem } from './models.js'
+import type { FeedItem, CommentItem } from './models.js'
 
 type FetchFn = typeof globalThis.fetch
 
@@ -15,6 +15,14 @@ interface DevtoArticle {
   user: { username: string; name: string }
   reading_time_minutes: number
   canonical_url?: string
+}
+
+interface DevtoRawComment {
+  id_code: string
+  body_html: string
+  created_at: string
+  user: { username: string; name: string }
+  children: DevtoRawComment[]
 }
 
 const BASE_URL = 'https://dev.to/api'
@@ -36,6 +44,32 @@ export class DevtoClient {
     return articles.map(devtoToFeedItem)
   }
 
+  async fetchArticle(id: number): Promise<FeedItem> {
+    const res = await this.fetch(`${BASE_URL}/articles/${id}`)
+    if (!res.ok) throw new Error(`DEV API error: ${res.status}`)
+
+    const article: DevtoArticle = await res.json()
+    return devtoToFeedItem(article)
+  }
+
+  async fetchComments(articleId: number): Promise<CommentItem[]> {
+    const res = await this.fetch(`${BASE_URL}/comments?a_id=${articleId}`)
+    if (!res.ok) throw new Error(`DEV API error: ${res.status}`)
+
+    const raw: DevtoRawComment[] = await res.json()
+    return raw.map((c) => buildDevtoCommentTree(c, 0))
+  }
+
+  async fetchTag(tag: string, page: number): Promise<FeedItem[]> {
+    const pageNum = page + 1
+    const url = `${BASE_URL}/articles?tag=${encodeURIComponent(tag)}&page=${pageNum}&per_page=${PER_PAGE}`
+    const res = await this.fetch(url)
+    if (!res.ok) throw new Error(`DEV API error: ${res.status}`)
+
+    const articles: DevtoArticle[] = await res.json()
+    return articles.map(devtoToFeedItem)
+  }
+
   private buildUrl(feedId: string, page: number): string {
     const pageNum = page + 1
     switch (feedId) {
@@ -47,6 +81,18 @@ export class DevtoClient {
       default:
         return `${BASE_URL}/articles?page=${pageNum}&per_page=${PER_PAGE}`
     }
+  }
+}
+
+function buildDevtoCommentTree(raw: DevtoRawComment, depth: number): CommentItem {
+  return {
+    id: `dev:${raw.id_code}`,
+    source: 'devto',
+    text: raw.body_html,
+    author: raw.user.username,
+    timestamp: Math.floor(new Date(raw.created_at).getTime() / 1000),
+    children: raw.children.map((c) => buildDevtoCommentTree(c, depth + 1)),
+    depth,
   }
 }
 
@@ -62,7 +108,9 @@ function devtoToFeedItem(article: DevtoArticle): FeedItem {
     timestamp: Math.floor(new Date(article.published_timestamp).getTime() / 1000),
     commentCount: article.comments_count,
     sourceUrl: article.url,
-    tags: article.tag_list,
+    tags: Array.isArray(article.tag_list)
+      ? article.tag_list
+      : article.tag_list.split(',').map((t: string) => t.trim()).filter(Boolean),
     originalId: article.id,
   }
 }

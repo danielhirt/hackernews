@@ -9,6 +9,7 @@ type FetchFn = typeof globalThis.fetch
 
 export interface SourceClient {
   fetchFeed(feedId: string, page: number): Promise<FeedItem[]>
+  fetchTag?(tag: string, page: number): Promise<FeedItem[]>
 }
 
 export class HnSourceAdapter implements SourceClient {

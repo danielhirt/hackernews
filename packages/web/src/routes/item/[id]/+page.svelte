@@ -1,9 +1,9 @@
 <script lang="ts">
   import { page } from '$app/state'
   import {
-    HnClient, LobstersClient,
+    HnClient, LobstersClient, DevtoClient,
     type Story, type FeedItem, type CommentItem, type ContentSource,
-    SOURCES,
+    SOURCES, SOURCE_ID, parseItemId, buildItemId,
   } from '@hackernews/core'
   import { fetchHnCommentTree } from '@hackernews/core'
   import { timeAgo, domainFrom } from '$lib/time'
@@ -13,27 +13,17 @@
   import { marked } from 'marked'
   import { getSummary, saveSummary, clearSummary, isExpanded, setExpanded } from '$lib/summaries.svelte'
   import { getSettings } from '$lib/settings.svelte'
+  import { sortCommentTree, type CommentSortMode } from '$lib/sort-filter'
 
   const hnClient = new HnClient()
   const lobstersClient = new LobstersClient(undefined, '/api/lobsters?path=')
+  const devtoClient = new DevtoClient()
 
   let rawId = $derived(page.params.id ?? '')
-  let source = $derived<ContentSource>(
-    rawId.startsWith('lo:') ? 'lobsters' :
-    rawId.startsWith('dev:') ? 'devto' :
-    'hackernews'
-  )
-  let sourceId = $derived(
-    rawId.startsWith('lo:') ? rawId.slice(3) :
-    rawId.startsWith('hn:') ? rawId.slice(3) :
-    rawId.startsWith('dev:') ? rawId.slice(4) :
-    rawId
-  )
-  let itemId = $derived(
-    source === 'hackernews' ? `hn:${sourceId}` :
-    source === 'lobsters' ? `lo:${sourceId}` :
-    `dev:${sourceId}`
-  )
+  let parsed = $derived(parseItemId(rawId))
+  let source = $derived(parsed.source)
+  let sourceId = $derived(parsed.id)
+  let itemId = $derived(buildItemId(source, sourceId))
 
   let title = $state('')
   let url = $state<string | undefined>(undefined)
@@ -49,13 +39,18 @@
   let loading = $state(true)
   let flagged = $state(false)
   let refreshKey = $state(0)
+  let refreshingComments = $state(false)
 
   let domain = $derived(domainFrom(url))
   let sourceConfig = $derived(SOURCES.find(s => s.id === source))
-  let isHn = $derived(source === 'hackernews')
+  let isHn = $derived(source === SOURCE_ID.HN)
 
   // Focus mode
   let focusStack = $state<string[]>([])
+
+  // Comment controls
+  let commentSort = $state<CommentSortMode>('default')
+  let collapseAll = $state(false)
 
   function findComment(items: CommentItem[], targetId: string): CommentItem | null {
     for (const c of items) {
@@ -67,10 +62,13 @@
   }
 
   let displayedComments = $derived.by(() => {
-    if (focusStack.length === 0) return comments
-    const focusedId = focusStack[focusStack.length - 1]
-    const focused = findComment(comments, focusedId)
-    return focused ? [focused] : comments
+    let result = comments
+    if (focusStack.length > 0) {
+      const focusedId = focusStack[focusStack.length - 1]
+      const focused = findComment(comments, focusedId)
+      result = focused ? [focused] : comments
+    }
+    return sortCommentTree(result, commentSort)
   })
 
   $effect(() => {
@@ -92,10 +90,12 @@
     comments = []
 
     try {
-      if (src === 'hackernews') {
+      if (src === SOURCE_ID.HN) {
         await loadHnItem(Number(id))
-      } else if (src === 'lobsters') {
+      } else if (src === SOURCE_ID.LOBSTERS) {
         await loadLobstersItem(id)
+      } else if (src === SOURCE_ID.DEVTO) {
+        await loadDevtoItem(Number(id))
       }
     } catch {
       flagged = true
@@ -137,6 +137,52 @@
     sourceUrl = result.story.sourceUrl
     tags = result.story.tags ?? []
     comments = result.comments
+  }
+
+  async function loadDevtoItem(id: number) {
+    const [article, articleComments] = await Promise.all([
+      devtoClient.fetchArticle(id),
+      devtoClient.fetchComments(id),
+    ])
+    title = article.title
+    url = article.url
+    bodyText = article.text
+    score = article.score
+    author = article.author
+    timestamp = article.timestamp
+    commentCount = article.commentCount
+    sourceUrl = article.sourceUrl
+    tags = article.tags ?? []
+    comments = articleComments
+  }
+
+  async function refreshComments() {
+    if (refreshingComments) return
+    refreshingComments = true
+    try {
+      if (source === SOURCE_ID.HN) {
+        const item = await hnClient.fetchItem(Number(sourceId))
+        if (item && 'kids' in item && (item as Story).kids?.length) {
+          comments = await fetchHnCommentTree(hnClient, (item as Story).kids!)
+          commentCount = (item as Story).descendants ?? 0
+        }
+      } else if (source === SOURCE_ID.LOBSTERS) {
+        const result = await lobstersClient.fetchStory(sourceId)
+        comments = result.comments
+        commentCount = result.story.commentCount
+      } else if (source === SOURCE_ID.DEVTO) {
+        const [articleComments, article] = await Promise.all([
+          devtoClient.fetchComments(Number(sourceId)),
+          devtoClient.fetchArticle(Number(sourceId)),
+        ])
+        comments = articleComments
+        commentCount = article.commentCount
+      }
+      refreshKey++
+    } catch (err) {
+      console.error('Failed to refresh comments:', err)
+    }
+    refreshingComments = false
   }
 
   function focusComment(commentId: string) {
@@ -216,7 +262,7 @@
 
     try {
       const body: Record<string, unknown> = { model: appSettings.value.model }
-      if (source === 'hackernews') {
+      if (source === SOURCE_ID.HN) {
         body.storyId = Number(sourceId)
       } else {
         body.title = title
@@ -275,7 +321,10 @@
           | {domain}
         {/if}
         {#if tags.length > 0}
-          | <span class="tags">{tags.join(', ')}</span>
+          | {#each tags as tag}<a
+              class="tag-pill"
+              href="/?source={source}&tag={tag}"
+            >{tag}</a>{/each}
         {/if}
       </div>
     </div>
@@ -291,12 +340,15 @@
   {#if hasSummary}
     <div class="summary-panel">
       <button class="summary-header" onclick={() => { summaryExpanded = !summaryExpanded; setExpanded(itemId, summaryExpanded) }}>
-        <span class="summary-label">AI Summary {summaryExpanded ? '▾' : '▸'}</span>
+        <span class="summary-label-group">
+          <span class="summary-label">AI Summary</span>
+          <span class="summary-toggle-icon">{summaryExpanded ? '▾' : '▸'}</span>
+        </span>
         <div class="summary-actions" onclick={(e) => e.stopPropagation()}>
           {#if summaryText && !summaryLoading}
-            <button class="summary-copy" onclick={copySummary}>{summaryCopied ? 'Copied!' : 'Copy'}</button>
-            <button class="summary-regen" onclick={fetchSummary}>Regenerate</button>
-            <button class="summary-dismiss" onclick={() => { clearSummary(itemId); summaryText = ''; summaryError = ''; summaryExpanded = false }}>Dismiss</button>
+            <button class="action-icon" onclick={copySummary} title="Copy">{summaryCopied ? '✓' : '⧉'}</button>
+            <button class="action-icon" onclick={fetchSummary} title="Regenerate">↻</button>
+            <button class="action-icon action-danger" onclick={() => { clearSummary(itemId); summaryText = ''; summaryError = ''; summaryExpanded = false }} title="Dismiss">✕</button>
           {/if}
         </div>
       </button>
@@ -334,12 +386,34 @@
   {/if}
 
   <section class="comments-section">
+    {#if comments.length > 0}
+      <div class="comment-controls">
+        <div class="controls-left">
+          <span class="comments-label">Comments</span>
+          <span class="comments-count">{commentCount}</span>
+        </div>
+        <div class="controls-right">
+          <button class="control-btn" class:active={commentSort === 'default'} onclick={() => commentSort = 'default'}>Default</button>
+          <button class="control-btn" class:active={commentSort === 'newest'} onclick={() => commentSort = 'newest'}>Newest</button>
+          <button class="control-btn" class:active={commentSort === 'oldest'} onclick={() => commentSort = 'oldest'}>Oldest</button>
+          <span class="controls-sep">|</span>
+          <button class="control-btn" onclick={() => { collapseAll = !collapseAll; refreshKey++ }}>
+            {collapseAll ? 'Expand all' : 'Collapse all'}
+          </button>
+          <span class="controls-sep">|</span>
+          <button class="control-icon" onclick={refreshComments} title="Refresh comments" disabled={refreshingComments}>
+            ↻
+          </button>
+        </div>
+      </div>
+    {/if}
     {#if displayedComments.length > 0}
       {#key refreshKey}
         <CommentTree
           comments={displayedComments}
           focusPath={focusStack}
           onfocus={focusComment}
+          defaultCollapsed={collapseAll}
         />
       {/key}
     {:else}
@@ -540,6 +614,12 @@
     margin-bottom: 8px;
   }
 
+  .summary-label-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
   .summary-label {
     font-size: 0.75rem;
     font-weight: 600;
@@ -548,50 +628,37 @@
     letter-spacing: 0.05em;
   }
 
+  .summary-toggle-icon {
+    font-size: 1.1rem;
+    color: var(--color-text-muted);
+    line-height: 0;
+  }
+
   .summary-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 4px;
   }
 
-  .summary-copy,
-  .summary-regen {
-    font-size: 0.7rem;
+  .action-icon {
+    font-size: 0.95rem;
     color: var(--color-text-faint);
-    padding: 2px 6px;
-    border: 1px solid var(--color-border);
+    padding: 0 2px;
+    line-height: 1;
   }
 
-  .summary-copy:hover,
-  .summary-regen:hover {
-    color: var(--color-text);
-    border-color: var(--color-text-faint);
+  .action-icon:hover {
+    color: var(--color-accent);
   }
 
-  .summary-dismiss {
-    font-size: 0.7rem;
-    color: var(--color-text-faint);
-    padding: 2px 6px;
-    border: 1px solid var(--color-border);
-  }
-
-  .summary-dismiss:hover {
+  .action-icon.action-danger:hover {
     color: var(--color-danger);
-    border-color: var(--color-danger);
   }
 
   .summary-body {
     font-size: 0.9rem;
     line-height: 1.6;
     color: var(--color-text);
-  }
-
-  .summary-body :global(h2),
-  .summary-body :global(h3) {
-    font-size: 0.9rem;
-    font-weight: 600;
-    margin-top: 10px;
-    margin-bottom: 4px;
   }
 
   .summary-body :global(p) {
@@ -661,7 +728,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.85rem;
+    font-size: 1.1rem;
     width: 28px;
     height: 28px;
     color: var(--color-text-faint);
@@ -682,8 +749,91 @@
     padding: 16px 0;
   }
 
-  .tags {
-    color: var(--color-text-faint);
+  .tag-pill {
+    display: inline-block;
+    font-size: 0.7rem;
+    padding: 1px 6px;
+    border: 1px solid var(--color-border);
+    color: var(--color-text-muted);
+    text-decoration: none;
+    margin-left: 4px;
+    line-height: 1.4;
+  }
+
+  .tag-pill:hover {
+    color: var(--color-accent);
+    border-color: var(--color-accent);
+  }
+
+  .comment-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: 8px;
+  }
+
+  .controls-left {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .controls-right {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .comments-label {
     font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .comments-count {
+    font-size: 0.75rem;
+    color: var(--color-text-faint);
+  }
+
+  .controls-sep {
+    color: var(--color-border);
+    font-size: 0.75rem;
+    margin: 0 2px;
+  }
+
+  .control-btn {
+    font-size: 0.75rem;
+    color: var(--color-text-faint);
+    padding: 2px 5px;
+    border: 1px solid transparent;
+  }
+
+  .control-btn:hover {
+    color: var(--color-text);
+  }
+
+  .control-btn.active {
+    color: var(--color-accent);
+    border-color: var(--color-accent);
+  }
+
+  .control-icon {
+    font-size: 0.95rem;
+    color: var(--color-text-faint);
+    line-height: 1;
+    padding: 0 2px;
+  }
+
+  .control-icon:hover:not(:disabled) {
+    color: var(--color-accent);
+  }
+
+  .control-icon:disabled {
+    opacity: 0.3;
+    cursor: default;
   }
 </style>

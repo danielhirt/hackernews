@@ -1,5 +1,5 @@
 import { goto } from '$app/navigation'
-import { SOURCES } from '@hackernews/core'
+import { SOURCES, SOURCE_ID, SOURCE_PREFIX } from '@hackernews/core'
 import { refreshFeed, getFeedState } from '$lib/feed.svelte'
 
 interface KeyboardState {
@@ -71,7 +71,7 @@ export function handleKeydown(e: KeyboardEvent) {
     case 'c': {
       e.preventDefault()
       const id = state.storyIds[state.selectedIndex]
-      if (id?.startsWith('hn:') || id?.startsWith('lo:')) {
+      if (id?.startsWith(SOURCE_PREFIX.hackernews) || id?.startsWith(SOURCE_PREFIX.lobsters) || id?.startsWith(SOURCE_PREFIX.devto)) {
         goto(`/item/${id}`)
       }
       break
@@ -88,8 +88,10 @@ export function handleKeydown(e: KeyboardEvent) {
       refreshFeed()
       break
     case '/':
-      e.preventDefault()
-      goto('/search')
+      if (feed.source === SOURCE_ID.HN) {
+        e.preventDefault()
+        goto('/search')
+      }
       break
   }
 }

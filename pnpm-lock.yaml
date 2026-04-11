@@ -11,10 +11,10 @@ importers:
   packages/core:
     devDependencies:
       typescript:
-        specifier: 5.9.3
+        specifier: ^5.7.0
         version: 5.9.3
       vitest:
-        specifier: 3.2.4
+        specifier: ^3.1.0
         version: 3.2.4(jsdom@29.0.2)
 
   packages/web:

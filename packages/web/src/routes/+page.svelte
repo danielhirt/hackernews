@@ -17,8 +17,12 @@
     new URLSearchParams(page.url.search).get('feed') ?? SOURCES.find(s => s.id === source)?.feeds[0]?.id ?? 'top'
   )
 
+  let tag: string | null = $derived(
+    new URLSearchParams(page.url.search).get('tag')
+  )
+
   $effect(() => {
-    loadFeed(source, feedId)
+    loadFeed(source, feedId, tag)
   })
 
   $effect(() => {
@@ -34,6 +38,13 @@
     }
   }}
 />
+
+{#if feed.tag}
+  <div class="tag-header">
+    <span class="tag-label">Tag: <strong>{feed.tag}</strong></span>
+    <a href="/?source={source}&feed={feedId}" class="tag-clear">Clear</a>
+  </div>
+{/if}
 
 <div class="feed">
   {#if feed.loading}
@@ -53,6 +64,29 @@
 </div>
 
 <style>
+  .tag-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 0.85rem;
+  }
+
+  .tag-label {
+    color: var(--color-text-muted);
+  }
+
+  .tag-clear {
+    color: var(--color-text-faint);
+    text-decoration: none;
+    font-size: 0.8rem;
+  }
+
+  .tag-clear:hover {
+    color: var(--color-accent);
+  }
+
   .feed {
     display: flex;
     flex-direction: column;

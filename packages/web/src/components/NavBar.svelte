@@ -1,16 +1,27 @@
 <script lang="ts">
-  import { SOURCES, type ContentSource } from '@hackernews/core'
+  import { SOURCES, SOURCE_ID, parseItemId, type ContentSource } from '@hackernews/core'
   import { page } from '$app/state'
-  import { refreshFeed } from '$lib/feed.svelte'
+  import { refreshFeed, getFeedState } from '$lib/feed.svelte'
   import { getTheme, toggleTheme } from '$lib/theme.svelte'
 
   const theme = getTheme()
 
+  const feed = getFeedState()
   let showSourceMenu = $state(false)
 
-  let currentSource = $derived<ContentSource>(
-    (new URLSearchParams(page.url.search).get('source') as ContentSource) ?? 'hackernews'
-  )
+  let currentSource = $derived.by<ContentSource>(() => {
+    const param = new URLSearchParams(page.url.search).get('source') as ContentSource | null
+    if (param) return param
+
+    // Detect source from /item/[id] route prefix
+    const match = page.url.pathname.match(/^\/item\/([^/]+)/)
+    if (match) {
+      return parseItemId(match[1]).source
+    }
+
+    // On non-feed pages (collections, settings), preserve last browsed source
+    return feed.source
+  })
   let currentFeed = $derived(
     new URLSearchParams(page.url.search).get('feed') ?? SOURCES.find(s => s.id === currentSource)?.feeds[0]?.id ?? 'top'
   )
@@ -58,13 +69,16 @@
     {/each}
   </div>
   <div class="nav-links">
-    <button class="nav-link" onclick={refreshFeed} title="Refresh feed (r)">Refresh</button>
-    <a href="/search" class="nav-link" title="Search HN (/)">Search</a>
+    {#if currentSource === SOURCE_ID.HN}
+      <a href="/search" class="nav-link" title="Search HN (/)">Search</a>
+    {/if}
     <a href="/collections" class="nav-link">Collections</a>
-    <a href="/settings" class="nav-link">Settings</a>
-    <button class="nav-link theme-toggle" onclick={toggleTheme} title="Toggle theme">
+    <span class="nav-divider">|</span>
+    <button class="icon-btn" onclick={refreshFeed} title="Refresh feed (r)">↻</button>
+    <button class="icon-btn" onclick={toggleTheme} title="Toggle theme">
       {theme.value === 'dark' ? '☀' : '☾'}
     </button>
+    <a href="/settings" class="icon-btn settings-icon" title="Settings">⚙</a>
   </div>
 </nav>
 
@@ -182,11 +196,26 @@
     color: var(--color-text);
   }
 
-  .theme-toggle {
+  .nav-divider {
+    color: var(--color-border);
+    font-size: 0.85rem;
+  }
+
+  .icon-btn {
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 1.1rem;
     line-height: 1;
+    color: var(--color-text-faint);
+    text-decoration: none;
+  }
+
+  .icon-btn:hover {
+    color: var(--color-text);
+  }
+
+  .settings-icon {
+    font-size: 1.55rem;
   }
 </style>

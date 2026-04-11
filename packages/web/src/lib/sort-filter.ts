@@ -1,4 +1,4 @@
-import type { Story, Comment } from '@hackernews/core'
+import type { Story, Comment, CommentItem } from '@hackernews/core'
 
 export type SortBy = 'newest' | 'oldest' | 'points' | 'discussed'
 export type FilterPeriod = 'all' | 'week' | 'month' | 'year'
@@ -32,4 +32,17 @@ export function sortComments(items: Comment[], sortBy: SortBy): Comment[] {
   const sorted = [...items]
   if (sortBy === 'oldest') return sorted.sort((a, b) => a.time - b.time)
   return sorted.sort((a, b) => b.time - a.time)
+}
+
+export type CommentSortMode = 'default' | 'newest' | 'oldest'
+
+export function sortCommentTree(items: CommentItem[], mode: CommentSortMode): CommentItem[] {
+  if (mode === 'default') return items
+  const sorted = [...items].sort((a, b) =>
+    mode === 'newest' ? b.timestamp - a.timestamp : a.timestamp - b.timestamp
+  )
+  return sorted.map((c) => ({
+    ...c,
+    children: sortCommentTree(c.children, mode),
+  }))
 }

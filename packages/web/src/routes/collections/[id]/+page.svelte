@@ -1,10 +1,16 @@
 <script lang="ts">
   import { page } from '$app/state'
-  import { HnClient, type Story, type FeedItem, storyToFeedItem } from '@hackernews/core'
+  import {
+    HnClient, LobstersClient, DevtoClient,
+    type Story, type FeedItem,
+    storyToFeedItem, parseItemId, SOURCE_ID,
+  } from '@hackernews/core'
   import { getCollections, removeFromCollection } from '$lib/collections.svelte'
   import StoryCard from '../../../components/StoryCard.svelte'
 
-  const client = new HnClient()
+  const hnClient = new HnClient()
+  const lobstersClient = new LobstersClient(undefined, '/api/lobsters?path=')
+  const devtoClient = new DevtoClient()
   const cols = getCollections()
 
   let items: FeedItem[] = $state([])
@@ -15,22 +21,61 @@
 
   $effect(() => {
     if (collection) {
-      loadStories(collection.itemIds)
+      loadItems(collection.itemIds)
     }
   })
 
-  async function loadStories(ids: string[]) {
+  async function loadItems(ids: string[]) {
     loading = true
-    const numericIds = ids
-      .filter((id) => id.startsWith('hn:'))
-      .map((id) => Number(id.slice(3)))
-    const results = await Promise.all(
-      numericIds.map((id) => client.fetchItem(id))
-    )
-    items = results
+
+    const hnIds: number[] = []
+    const loIds: string[] = []
+    const devIds: number[] = []
+
+    for (const id of ids) {
+      const { source, id: nativeId } = parseItemId(id)
+      if (source === SOURCE_ID.HN) hnIds.push(Number(nativeId))
+      else if (source === SOURCE_ID.LOBSTERS) loIds.push(nativeId)
+      else if (source === SOURCE_ID.DEVTO) devIds.push(Number(nativeId))
+    }
+
+    const [hnItems, loItems, devItems] = await Promise.all([
+      fetchHnItems(hnIds),
+      fetchLobstersItems(loIds),
+      fetchDevtoItems(devIds),
+    ])
+
+    // Preserve the saved order from collection.itemIds
+    const itemMap = new Map<string, FeedItem>()
+    for (const item of [...hnItems, ...loItems, ...devItems]) {
+      itemMap.set(item.id, item)
+    }
+    items = ids.map((id) => itemMap.get(id)).filter((item): item is FeedItem => !!item)
+    loading = false
+  }
+
+  async function fetchHnItems(ids: number[]): Promise<FeedItem[]> {
+    if (ids.length === 0) return []
+    const results = await Promise.all(ids.map((id) => hnClient.fetchItem(id).catch(() => null)))
+    return results
       .filter((item): item is Story => item !== null && 'title' in item)
       .map(storyToFeedItem)
-    loading = false
+  }
+
+  async function fetchLobstersItems(shortIds: string[]): Promise<FeedItem[]> {
+    if (shortIds.length === 0) return []
+    const results = await Promise.all(
+      shortIds.map((id) => lobstersClient.fetchStory(id).then((r) => r.story).catch(() => null))
+    )
+    return results.filter((item): item is FeedItem => item !== null)
+  }
+
+  async function fetchDevtoItems(ids: number[]): Promise<FeedItem[]> {
+    if (ids.length === 0) return []
+    const results = await Promise.all(
+      ids.map((id) => devtoClient.fetchArticle(id).catch(() => null))
+    )
+    return results.filter((item): item is FeedItem => item !== null)
   }
 
   async function handleRemove(itemId: string) {
@@ -53,8 +98,8 @@
     {:else}
       {#each items as item, i (item.id)}
         <div class="saved-story">
-          <StoryCard {item} index={i} />
-          <button class="remove-btn" onclick={() => handleRemove(item.id)}>[x]</button>
+          <StoryCard {item} index={i} showSourceBadge={true} />
+          <button class="remove-btn" onclick={() => handleRemove(item.id)} title="Remove from collection">✕</button>
         </div>
       {/each}
     {/if}
@@ -102,20 +147,23 @@
   }
 
   .saved-story {
-    display: flex;
-    align-items: center;
-  }
-
-  .saved-story :global(.story-card) {
-    flex: 1;
+    position: relative;
   }
 
   .remove-btn {
-    font-size: 0.75rem;
-    font-family: var(--font-mono);
+    position: absolute;
+    right: -24px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.7rem;
     color: var(--color-text-faint);
-    padding: 2px 6px;
-    flex-shrink: 0;
+    opacity: 0;
+    padding: 4px;
+    transition: opacity 0.15s;
+  }
+
+  .saved-story:hover .remove-btn {
+    opacity: 1;
   }
 
   .remove-btn:hover {

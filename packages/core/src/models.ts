@@ -75,6 +75,32 @@ export const DEFAULT_COLLECTION_ID = 'favorites'
 
 export type ContentSource = 'hackernews' | 'lobsters' | 'devto'
 
+export const SOURCE_ID = {
+  HN: 'hackernews' as ContentSource,
+  LOBSTERS: 'lobsters' as ContentSource,
+  DEVTO: 'devto' as ContentSource,
+}
+
+export const SOURCE_PREFIX: Record<ContentSource, string> = {
+  hackernews: 'hn:',
+  lobsters: 'lo:',
+  devto: 'dev:',
+}
+
+/** Parse a prefixed ID like "hn:123" into { source, id } */
+export function parseItemId(prefixedId: string): { source: ContentSource; id: string } {
+  if (prefixedId.startsWith('lo:')) return { source: 'lobsters', id: prefixedId.slice(3) }
+  if (prefixedId.startsWith('dev:')) return { source: 'devto', id: prefixedId.slice(4) }
+  if (prefixedId.startsWith('hn:')) return { source: 'hackernews', id: prefixedId.slice(3) }
+  // Bare numeric ID = legacy HN
+  return { source: 'hackernews', id: prefixedId }
+}
+
+/** Build a prefixed ID from source + native ID */
+export function buildItemId(source: ContentSource, nativeId: string | number): string {
+  return `${SOURCE_PREFIX[source]}${nativeId}`
+}
+
 export interface FeedItem {
   id: string               // Source-prefixed: "hn:123", "lo:abc", "dev:456"
   source: ContentSource

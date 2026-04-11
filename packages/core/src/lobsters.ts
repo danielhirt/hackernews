@@ -66,6 +66,18 @@ export class LobstersClient {
     const stories: LobstersStory[] = await res.json()
     return stories.map(lobstersToFeedItem)
   }
+
+  async fetchTag(tag: string, page: number): Promise<FeedItem[]> {
+    const path = page === 0
+      ? `/t/${tag}.json`
+      : `/t/${tag}/page/${page + 1}.json`
+
+    const res = await this.fetch(`${this.baseUrl}${path}`)
+    if (!res.ok) throw new Error(`Lobsters API error: ${res.status}`)
+
+    const stories: LobstersStory[] = await res.json()
+    return stories.map(lobstersToFeedItem)
+  }
 }
 
 function buildLobstersCommentTree(flatComments: LobstersRawComment[]): CommentItem[] {

@@ -16,6 +16,7 @@
   let editingId: string | null = $state(null)
   let editName = $state('')
   let confirmDeleteId: string | null = $state(null)
+  let colorPickerId: string | null = $state(null)
 
   async function handleCreate() {
     if (!newName.trim()) return
@@ -41,6 +42,15 @@
     }
     editingId = null
   }
+
+  function toggleColorPicker(id: string) {
+    colorPickerId = colorPickerId === id ? null : id
+  }
+
+  async function setCollectionColor(id: string, color: string) {
+    await updateCollectionColor(id, color)
+    colorPickerId = null
+  }
 </script>
 
 <div class="collections-page">
@@ -53,12 +63,15 @@
 
   {#if showCreate}
     <form class="create-form" onsubmit={(e) => { e.preventDefault(); handleCreate() }}>
-      <input
-        type="text"
-        bind:value={newName}
-        placeholder="Name"
-        class="name-input"
-      />
+      <div class="create-top">
+        <input
+          type="text"
+          bind:value={newName}
+          placeholder="Collection name"
+          class="name-input"
+        />
+        <button type="submit" class="submit-btn" disabled={!newName.trim()}>Create</button>
+      </div>
       <div class="color-picker">
         {#each COLLECTION_COLORS as color}
           <button
@@ -67,18 +80,28 @@
             class:selected={newColor === color}
             style="background: {color}"
             onclick={() => (newColor = color)}
-            aria-label="Color {color}"
           ></button>
         {/each}
+        <label class="custom-color">
+          <input
+            type="color"
+            value={newColor}
+            onchange={(e) => (newColor = (e.target as HTMLInputElement).value)}
+          />
+        </label>
       </div>
-      <button type="submit" class="submit-btn">Create</button>
     </form>
   {/if}
 
   <div class="collection-list">
     {#each cols.value as col (col.id)}
       <div class="collection-item">
-        <div class="color-dot" style="background: {col.color}"></div>
+        <button
+          class="color-dot"
+          style="background: {col.color}"
+          title="Change color"
+          onclick={() => toggleColorPicker(col.id)}
+        ></button>
         <div class="collection-info">
           {#if editingId === col.id}
             <input
@@ -105,6 +128,25 @@
           {/if}
         </div>
       </div>
+      {#if colorPickerId === col.id}
+        <div class="inline-color-picker">
+          {#each COLLECTION_COLORS as color}
+            <button
+              class="color-swatch"
+              class:selected={col.color === color}
+              style="background: {color}"
+              onclick={() => setCollectionColor(col.id, color)}
+            ></button>
+          {/each}
+          <label class="custom-color">
+            <input
+              type="color"
+              value={col.color}
+              onchange={(e) => setCollectionColor(col.id, (e.target as HTMLInputElement).value)}
+            />
+          </label>
+        </div>
+      {/if}
     {/each}
   </div>
 </div>
@@ -147,6 +189,11 @@
     border: 1px solid var(--color-border);
   }
 
+  .create-top {
+    display: flex;
+    gap: 8px;
+  }
+
   .name-input,
   .edit-input {
     padding: 4px 8px;
@@ -157,31 +204,78 @@
     font-size: 0.85rem;
   }
 
-  .color-picker {
-    display: flex;
-    gap: 4px;
-  }
-
-  .color-swatch {
-    width: 20px;
-    height: 20px;
-    border: 1px solid transparent;
-  }
-
-  .color-swatch.selected {
-    border-color: var(--color-text);
+  .name-input {
+    flex: 1;
   }
 
   .submit-btn {
-    align-self: flex-start;
     padding: 4px 12px;
     border: 1px solid var(--color-border);
     font-size: 0.8rem;
     color: var(--color-text-muted);
   }
 
-  .submit-btn:hover {
+  .submit-btn:hover:not(:disabled) {
     color: var(--color-text);
+    border-color: var(--color-text-faint);
+  }
+
+  .submit-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  .color-picker,
+  .inline-color-picker {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+
+  .inline-color-picker {
+    padding: 6px 0 6px 18px;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .color-swatch {
+    width: 20px;
+    height: 20px;
+    border: 2px solid transparent;
+    cursor: pointer;
+  }
+
+  .color-swatch:hover {
+    opacity: 0.8;
+  }
+
+  .color-swatch.selected {
+    border-color: var(--color-text);
+    outline: 2px solid var(--color-bg);
+    outline-offset: -3px;
+  }
+
+  .custom-color {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+  }
+
+  .custom-color input[type="color"] {
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: 1px solid var(--color-border);
+    background: none;
+    cursor: pointer;
+  }
+
+  .custom-color input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 2px;
+  }
+
+  .custom-color input[type="color"]::-webkit-color-swatch {
+    border: none;
   }
 
   .collection-list {
@@ -198,9 +292,15 @@
   }
 
   .color-dot {
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
     flex-shrink: 0;
+    cursor: pointer;
+    border: none;
+  }
+
+  .color-dot:hover {
+    opacity: 0.7;
   }
 
   .collection-info {

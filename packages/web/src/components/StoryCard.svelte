@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { FeedItem } from '@hackernews/core'
-  import { SOURCES } from '@hackernews/core'
+  import { SOURCES, SOURCE_ID } from '@hackernews/core'
   import { timeAgo, domainFrom } from '$lib/time'
   import SaveButton from './SaveButton.svelte'
   import { isRead, markRead } from '$lib/read-history.svelte'
@@ -8,13 +8,13 @@
   import { getSettings } from '$lib/settings.svelte'
   import { marked } from 'marked'
 
-  let { item, index, selected = false }: { item: FeedItem; index: number; selected?: boolean } = $props()
+  let { item, index, selected = false, showSourceBadge = false }: { item: FeedItem; index: number; selected?: boolean; showSourceBadge?: boolean } = $props()
 
   let domain = $derived(domainFrom(item.url))
   let read = $derived(isRead(item.id))
-  let hasDetailPage = $derived(item.source === 'hackernews' || item.source === 'lobsters')
+  let hasDetailPage = $derived(item.source === SOURCE_ID.HN || item.source === SOURCE_ID.LOBSTERS || item.source === SOURCE_ID.DEVTO)
   let detailHref = $derived(hasDetailPage ? `/item/${item.id}` : item.sourceUrl)
-  let isHn = $derived(item.source === 'hackernews')
+  let isHn = $derived(item.source === SOURCE_ID.HN)
   let textOpen = $state(false)
   let textExpanded = $state(false)
 
@@ -46,10 +46,19 @@
     summaryLoading = true
 
     try {
+      const body: Record<string, unknown> = { model: appSettings.value.model }
+      if (isHn) {
+        body.storyId = item.originalId
+      } else {
+        body.title = item.title
+        body.url = item.url
+        body.text = item.text
+      }
+
       const res = await fetch('/api/summarize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ storyId: item.originalId, model: appSettings.value.model }),
+        body: JSON.stringify(body),
       })
       const text = await res.text()
       if (!res.ok) {
@@ -66,12 +75,26 @@
   }
 
   let summaryCopied = $state(false)
+  let opCopied = $state(false)
 
   async function copySummary() {
     if (!summaryText) return
     await navigator.clipboard.writeText(summaryText)
     summaryCopied = true
     setTimeout(() => summaryCopied = false, 1500)
+  }
+
+  function stripHtml(html: string): string {
+    const div = document.createElement('div')
+    div.innerHTML = html
+    return div.textContent ?? ''
+  }
+
+  async function copyOpText() {
+    if (!item.text) return
+    await navigator.clipboard.writeText(stripHtml(item.text))
+    opCopied = true
+    setTimeout(() => opCopied = false, 1500)
   }
 
   function dismissSummary() {
@@ -103,6 +126,15 @@
         <span class="rank">{index + 1}.</span>
         <span class="title">
           {item.title}
+          {#if item.tags?.length}
+            {#each item.tags.slice(0, 3) as tag}
+              <a
+                class="tag-pill"
+                href="/?source={item.source}&tag={tag}"
+                onclick={(e: MouseEvent) => e.stopPropagation()}
+              >{tag}</a>
+            {/each}
+          {/if}
           {#if item.url}
             <a
               class="domain"
@@ -115,7 +147,7 @@
         </span>
       </div>
       <div class="meta">
-        {#if item.source !== 'hackernews'}
+        {#if showSourceBadge}
           <span class="source-badge" style="background: {SOURCES.find(s => s.id === item.source)?.color ?? '#888'}">{SOURCES.find(s => s.id === item.source)?.shortName ?? item.source}</span>
           <span class="sep">|</span>
         {/if}
@@ -134,10 +166,6 @@
           <span class="sep">|</span>
           <span>{item.commentCount}&nbsp;comments</span>
         {/if}
-        {#if item.tags?.length}
-          <span class="sep">|</span>
-          <span class="tags">{item.tags.slice(0, 3).join(', ')}</span>
-        {/if}
       </div>
     </div>
     <div class="card-actions">
@@ -146,18 +174,15 @@
         class:has-text={!!item.text}
         class:active={textOpen}
         title={item.text ? 'Show post text' : 'No post content'}
-        style={!item.text && !isHn ? 'visibility: hidden' : ''}
         onclick={(e: MouseEvent) => { e.preventDefault(); e.stopPropagation(); textOpen = !textOpen; if (!textOpen) textExpanded = false }}
       >{textOpen ? '▾' : '▸'}</button>
-      {#if isHn}
-        <button
-          class="ai-toggle"
-          class:active={hasSummary}
-          title="AI summary"
-          disabled={summaryLoading}
-          onclick={triggerSummary}
-        >✦</button>
-      {/if}
+      <button
+        class="ai-toggle"
+        class:active={hasSummary}
+        title="AI summary"
+        disabled={summaryLoading}
+        onclick={triggerSummary}
+      >✦</button>
       <SaveButton itemId={item.id} />
       {#if item.url}
         <a
@@ -180,12 +205,14 @@
           {@html item.text}
         </div>
         <div class="panel-actions">
-          <button class="expand-toggle" onclick={() => textExpanded = !textExpanded}>
-            {textExpanded ? 'Show less' : 'Show more'}
+          <button class="action-icon" onclick={() => textExpanded = !textExpanded} title={textExpanded ? 'Show less' : 'Show more'}>
+            {textExpanded ? '▾' : '▸'}
           </button>
-          <span class="sep">|</span>
-          <button class="expand-toggle" onclick={() => { textOpen = false; textExpanded = false }}>
-            Collapse
+          <button class="action-icon" onclick={copyOpText} title="Copy">
+            {opCopied ? '✓' : '⧉'}
+          </button>
+          <button class="action-icon" onclick={() => { textOpen = false; textExpanded = false }} title="Collapse">
+            ✕
           </button>
         </div>
       {:else if !hasSummary}
@@ -209,17 +236,14 @@
           {/if}
           {#if summaryText && !summaryLoading}
             <div class="panel-actions">
-              <button class="expand-toggle" onclick={() => summaryExpanded = !summaryExpanded}>
-                {summaryExpanded ? 'Show less' : 'Show more'}
+              <button class="action-icon" onclick={() => summaryExpanded = !summaryExpanded} title={summaryExpanded ? 'Show less' : 'Show more'}>
+                {summaryExpanded ? '▾' : '▸'}
               </button>
-              <span class="sep">|</span>
-              <button class="expand-toggle" onclick={copySummary}>
-                {summaryCopied ? 'Copied!' : 'Copy'}
+              <button class="action-icon" onclick={copySummary} title="Copy">
+                {summaryCopied ? '✓' : '⧉'}
               </button>
-              <span class="sep">|</span>
-              <button class="expand-toggle" onclick={fetchSummary}>Regenerate</button>
-              <span class="sep">|</span>
-              <button class="expand-toggle" onclick={dismissSummary}>Dismiss</button>
+              <button class="action-icon" onclick={fetchSummary} title="Regenerate">↻</button>
+              <button class="action-icon action-danger" onclick={dismissSummary} title="Dismiss">✕</button>
             </div>
           {/if}
         </div>
@@ -318,7 +342,9 @@
     justify-content: center;
     width: 28px;
     height: 28px;
-    font-size: 1.1rem;
+    font-size: 1.7rem;
+    line-height: 0;
+    margin-top: -2px;
     color: var(--color-text-faint);
     opacity: 0.4;
     transition: opacity 0.15s, color 0.15s;
@@ -388,22 +414,23 @@
   .panel-actions {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
     margin-top: 4px;
   }
 
-  .panel-actions .sep {
+  .action-icon {
+    font-size: 0.95rem;
     color: var(--color-text-faint);
-    font-size: 0.75rem;
+    padding: 0 2px;
+    line-height: 1;
   }
 
-  .expand-toggle {
-    font-size: 0.75rem;
-    color: var(--color-text-faint);
-  }
-
-  .expand-toggle:hover {
+  .action-icon:hover {
     color: var(--color-accent);
+  }
+
+  .action-icon.action-danger:hover {
+    color: var(--color-danger);
   }
 
   .ai-toggle {
@@ -558,8 +585,20 @@
     line-height: 1.4;
   }
 
-  .tags {
-    color: var(--color-text-faint);
-    font-size: 0.75rem;
+  .tag-pill {
+    display: inline-block;
+    font-size: 0.7rem;
+    padding: 1px 6px;
+    border: 1px solid var(--color-border);
+    color: var(--color-text-muted);
+    text-decoration: none;
+    vertical-align: middle;
+    margin-left: 4px;
+    line-height: 1.4;
+  }
+
+  .tag-pill:hover {
+    color: var(--color-accent);
+    border-color: var(--color-accent);
   }
 </style>
