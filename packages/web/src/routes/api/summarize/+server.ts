@@ -54,6 +54,39 @@ async function fetchCommentTree(client: HnClient, ids: number[], depth = 0): Pro
   return comments.slice(0, MAX_COMMENTS)
 }
 
+function buildGenericPrompt(
+  title: string,
+  text: string | undefined,
+  articleText: string,
+  comments: { author: string; text: string }[],
+): string {
+  let context = `Analyze the following post. Provide a concise summary covering:
+1. What the post/article is about (2-3 sentences)
+2. Key takeaways or interesting points
+3. Notable themes or perspectives from the discussion (if comments are present)
+
+Be direct and informative. Use markdown formatting.
+
+# "${title}"\n`
+
+  if (text) {
+    context += `\n## Post text\n${text}\n`
+  }
+
+  if (articleText) {
+    context += `\n## Linked article content\n${articleText}\n`
+  }
+
+  if (comments.length > 0) {
+    context += `\n## Discussion (top comments)\n`
+    for (const c of comments) {
+      context += `- ${c.author}: ${c.text}\n`
+    }
+  }
+
+  return context
+}
+
 function buildPrompt(story: Story, articleText: string, comments: Comment[]): string {
   let context = `Analyze the following Hacker News post. Provide a concise summary covering:
 1. What the post/article is about (2-3 sentences)
@@ -179,16 +212,38 @@ async function runClaudeWithRetry(prompt: string, model = 'sonnet', retries = 1)
 }
 
 export const POST: RequestHandler = async ({ request, fetch: skFetch }) => {
-  let body: { storyId?: number; model?: string }
+  let body: Record<string, unknown>
   try {
     body = await request.json()
   } catch {
     return new Response('Invalid request body', { status: 400 })
   }
 
-  const { storyId, model } = body
+  const { storyId, model } = body as { storyId?: number; model?: string }
+
+  // Generic mode: caller passes data directly (for non-HN sources)
+  const itemTitle = body.title as string | undefined
+  if (itemTitle && !storyId) {
+    const itemUrl = body.url as string | undefined
+    const itemText = body.text as string | undefined
+    const itemComments = (body.comments ?? []) as { author: string; text: string }[]
+
+    const articleText = itemUrl ? await fetchArticleText(itemUrl, skFetch) : ''
+    const prompt = buildGenericPrompt(itemTitle, itemText, articleText, itemComments)
+
+    try {
+      const result = await runClaudeWithRetry(prompt, model)
+      return new Response(result, {
+        headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+      })
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      return new Response(message, { status: 502 })
+    }
+  }
+
   if (!storyId) {
-    return new Response('Missing storyId', { status: 400 })
+    return new Response('Missing storyId or title', { status: 400 })
   }
 
   const client = new HnClient(skFetch)
