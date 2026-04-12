@@ -1,10 +1,10 @@
 {
-  "name": "hackernews",
+  "name": "omnifeed",
   "private": true,
   "scripts": {
-    "dev": "pnpm --filter @hackernews/web dev",
-    "build": "pnpm --filter @hackernews/core build && pnpm --filter @hackernews/web build",
+    "dev": "pnpm --filter @omnifeed/web dev",
+    "build": "pnpm --filter @omnifeed/core build && pnpm --filter @omnifeed/web build",
     "test": "pnpm -r test",
-    "test:core": "pnpm --filter @hackernews/core test"
+    "test:core": "pnpm --filter @omnifeed/core test"
   }
 }

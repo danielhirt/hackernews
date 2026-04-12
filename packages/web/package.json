@@ -1,5 +1,5 @@
 {
-	"name": "@hackernews/web",
+	"name": "@omnifeed/web",
 	"private": true,
 	"version": "0.0.1",
 	"type": "module",
@@ -14,7 +14,7 @@
 		"test:watch": "vitest"
 	},
 	"dependencies": {
-		"@hackernews/core": "workspace:*",
+		"@omnifeed/core": "workspace:*",
 		"idb": "8.0.3",
 		"marked": "17.0.6"
 	},

@@ -5,7 +5,7 @@ import {
   type SourceClient,
   type ContentSource,
   type FeedItem,
-} from '@hackernews/core'
+} from '@omnifeed/core'
 
 interface FeedCache {
   items: FeedItem[]

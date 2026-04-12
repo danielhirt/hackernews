@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import type { Story, Comment, CommentItem } from '@hackernews/core'
+import type { Story, Comment, CommentItem } from '@omnifeed/core'
 import {
   periodCutoff,
   filterByPeriod,

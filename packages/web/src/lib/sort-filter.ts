@@ -1,4 +1,4 @@
-import type { Story, Comment, CommentItem } from '@hackernews/core'
+import type { Story, Comment, CommentItem } from '@omnifeed/core'
 
 export type SortBy = 'newest' | 'oldest' | 'points' | 'discussed'
 export type FilterPeriod = 'all' | 'week' | 'month' | 'year'

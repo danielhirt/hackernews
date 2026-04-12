@@ -1,10 +1,10 @@
-# HackerNews Reader
+# Omnifeed
 
 ## Project Overview
 
-A Hacker News reader app built as a pnpm monorepo with two packages:
+A multi-source news aggregator (HN, Lobsters, DEV.to) built as a pnpm monorepo with two packages:
 
-- **`packages/core`** — TypeScript library: HN API client, data models, feed pagination, caching
+- **`packages/core`** — TypeScript library: API clients, data models, feed pagination, caching
 - **`packages/web`** — SvelteKit 5 frontend: feed views, story detail, collections, AI summaries
 
 ## Tech Stack

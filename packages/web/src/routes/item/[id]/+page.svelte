@@ -4,8 +4,8 @@
     HnClient, LobstersClient, DevtoClient,
     type Story, type FeedItem, type CommentItem, type ContentSource,
     SOURCES, SOURCE_ID, parseItemId, buildItemId,
-  } from '@hackernews/core'
-  import { fetchHnCommentTree } from '@hackernews/core'
+  } from '@omnifeed/core'
+  import { fetchHnCommentTree } from '@omnifeed/core'
   import { timeAgo, domainFrom } from '$lib/time'
   import CommentTree from '../../../components/CommentTree.svelte'
   import SaveButton from '../../../components/SaveButton.svelte'
@@ -314,6 +314,7 @@
 {:else if flagged}
   <p class="flagged">This item has been flagged or removed.</p>
 {:else}
+  <a href="/?source={source}" class="back-link">← Back</a>
   <header class="story-header">
     <div class="story-text">
       <h1 class="story-title">
@@ -437,6 +438,18 @@
 {/if}
 
 <style>
+  .back-link {
+    display: inline-block;
+    font-size: 0.8rem;
+    color: var(--color-text-faint);
+    text-decoration: none;
+    margin-bottom: 8px;
+  }
+
+  .back-link:hover {
+    color: var(--color-accent);
+  }
+
   .loading {
     color: var(--color-text-muted);
     padding: 16px 0;

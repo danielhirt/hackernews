@@ -1,7 +1,7 @@
 <script lang="ts">
   import { page } from '$app/state'
   import { goto } from '$app/navigation'
-  import { AlgoliaClient, type FeedItem } from '@hackernews/core'
+  import { AlgoliaClient, type FeedItem } from '@omnifeed/core'
   import StoryCard from '../../components/StoryCard.svelte'
   import StoryCardSkeleton from '../../components/StoryCardSkeleton.svelte'
   import { getKeyboardState } from '$lib/keyboard.svelte'

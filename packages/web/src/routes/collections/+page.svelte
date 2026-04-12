@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { COLLECTION_COLORS, DEFAULT_COLLECTION_ID } from '@hackernews/core'
+  import { COLLECTION_COLORS, DEFAULT_COLLECTION_ID } from '@omnifeed/core'
   import {
     getCollections,
     createCollection,

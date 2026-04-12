@@ -1,5 +1,5 @@
 import { goto } from '$app/navigation'
-import { SOURCES, SOURCE_ID, SOURCE_PREFIX } from '@hackernews/core'
+import { SOURCES, SOURCE_ID, SOURCE_PREFIX } from '@omnifeed/core'
 import { refreshFeed, getFeedState } from '$lib/feed.svelte'
 
 interface KeyboardState {

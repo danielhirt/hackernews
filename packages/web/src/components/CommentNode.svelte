@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { SOURCE_ID, type CommentItem } from '@hackernews/core'
+  import { SOURCE_ID, type CommentItem } from '@omnifeed/core'
   import { timeAgo } from '$lib/time'
   import CommentTree from './CommentTree.svelte'
 

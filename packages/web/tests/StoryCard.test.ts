@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, fireEvent } from '@testing-library/svelte'
 import StoryCard from '../src/components/StoryCard.svelte'
-import type { FeedItem } from '@hackernews/core'
+import type { FeedItem } from '@omnifeed/core'
 
 const mockGetSummary = vi.fn(() => undefined as string | undefined)
 const mockSaveSummary = vi.fn()

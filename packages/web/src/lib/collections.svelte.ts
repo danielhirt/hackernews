@@ -1,6 +1,6 @@
 import { browser } from '$app/environment'
-import type { Collection } from '@hackernews/core'
-import { COLLECTION_COLORS, DEFAULT_COLLECTION_ID } from '@hackernews/core'
+import type { Collection } from '@omnifeed/core'
+import { COLLECTION_COLORS, DEFAULT_COLLECTION_ID } from '@omnifeed/core'
 import { IdbStorageAdapter } from './idb-adapter'
 
 let adapter: IdbStorageAdapter | null = null

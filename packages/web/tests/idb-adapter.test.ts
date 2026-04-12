@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto'
 import { describe, it, expect, beforeEach } from 'vitest'
 import { IdbStorageAdapter } from '../src/lib/idb-adapter'
-import { DEFAULT_COLLECTION_ID } from '@hackernews/core'
+import { DEFAULT_COLLECTION_ID } from '@omnifeed/core'
 
 describe('IdbStorageAdapter', () => {
   let adapter: IdbStorageAdapter

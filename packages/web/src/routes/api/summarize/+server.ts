@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { HnClient, type Story, type Comment } from '@hackernews/core'
+import { HnClient, type Story, type Comment } from '@omnifeed/core'
 import type { RequestHandler } from './$types'
 
 const MAX_COMMENTS = 30

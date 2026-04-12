@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from '$app/state'
-  import { HnClient, LobstersClient, type User, type LobstersUser, type Story, type Comment as HnComment, DEFAULT_COLLECTION_ID, storyToFeedItem } from '@hackernews/core'
+  import { HnClient, LobstersClient, type User, type LobstersUser, type Story, type Comment as HnComment, DEFAULT_COLLECTION_ID, storyToFeedItem } from '@omnifeed/core'
   import { timeAgo } from '$lib/time'
   import { getCollections } from '$lib/collections.svelte'
   import { sortStories, sortComments, filterByPeriod, type SortBy, type FilterPeriod } from '$lib/sort-filter'

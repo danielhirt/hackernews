@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { CommentItem } from '@hackernews/core'
+  import type { CommentItem } from '@omnifeed/core'
   import CommentNode from './CommentNode.svelte'
 
   let {

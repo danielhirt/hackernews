@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { FeedItem } from '@hackernews/core'
-  import { SOURCES, SOURCE_ID } from '@hackernews/core'
+  import type { FeedItem } from '@omnifeed/core'
+  import { SOURCES, SOURCE_ID } from '@omnifeed/core'
   import { timeAgo, domainFrom } from '$lib/time'
   import SaveButton from './SaveButton.svelte'
   import { isRead, markRead } from '$lib/read-history.svelte'

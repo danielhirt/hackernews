@@ -1,6 +1,6 @@
 import { openDB, type IDBPDatabase } from 'idb'
-import type { StorageAdapter, Collection } from '@hackernews/core'
-import { DEFAULT_COLLECTION_ID, COLLECTION_COLORS } from '@hackernews/core'
+import type { StorageAdapter, Collection } from '@omnifeed/core'
+import { DEFAULT_COLLECTION_ID, COLLECTION_COLORS } from '@omnifeed/core'
 
 const DB_VERSION = 1
 const STORE_NAME = 'collections'

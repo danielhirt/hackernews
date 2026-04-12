@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { Collection } from '@hackernews/core'
-  import { DEFAULT_COLLECTION_ID } from '@hackernews/core'
+  import type { Collection } from '@omnifeed/core'
+  import { DEFAULT_COLLECTION_ID } from '@omnifeed/core'
   import {
     getCollections,
     addToCollection,

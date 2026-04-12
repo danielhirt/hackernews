@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from '$app/state'
-  import { type FeedType, type ContentSource, SOURCES } from '@hackernews/core'
+  import { type FeedType, type ContentSource, SOURCES } from '@omnifeed/core'
   import StoryCard from '../components/StoryCard.svelte'
   import StoryCardSkeleton from '../components/StoryCardSkeleton.svelte'
   import { getKeyboardState } from '$lib/keyboard.svelte'

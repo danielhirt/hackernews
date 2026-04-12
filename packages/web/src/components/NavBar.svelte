@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { SOURCES, SOURCE_ID, parseItemId, type ContentSource } from '@hackernews/core'
+  import { SOURCES, SOURCE_ID, parseItemId, type ContentSource } from '@omnifeed/core'
   import { page } from '$app/state'
   import { refreshFeed, getFeedState } from '$lib/feed.svelte'
   import { getTheme, toggleTheme } from '$lib/theme.svelte'

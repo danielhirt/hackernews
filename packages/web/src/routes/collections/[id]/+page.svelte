@@ -5,7 +5,7 @@
     type Story, type FeedItem, type ContentSource,
     storyToFeedItem, parseItemId, SOURCE_ID, SOURCES,
     DEFAULT_COLLECTION_ID,
-  } from '@hackernews/core'
+  } from '@omnifeed/core'
   import { getCollections, removeFromCollection, renameCollection } from '$lib/collections.svelte'
   import StoryCard from '../../../components/StoryCard.svelte'
 

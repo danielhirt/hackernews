@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Collection } from '@hackernews/core'
+  import type { Collection } from '@omnifeed/core'
 
   let {
     collections,
