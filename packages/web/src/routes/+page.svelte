@@ -1,19 +1,26 @@
 <script lang="ts">
   import { page } from '$app/state'
-  import { goto } from '$app/navigation'
-  import { type FeedType, type ContentSource, SOURCES, SOURCE_ID, AlgoliaClient, type FeedItem } from '@omnifeed/core'
+  import { type ContentSource, SOURCES, SOURCE_ID, AlgoliaClient, type FeedItem, type OmnifeedMode } from '@omnifeed/core'
   import StoryCard from '../components/StoryCard.svelte'
   import StoryCardSkeleton from '../components/StoryCardSkeleton.svelte'
   import { getKeyboardState } from '$lib/keyboard.svelte'
-  import { getFeedState, loadFeed, loadMore } from '$lib/feed.svelte'
+  import { getFeedState, loadFeed, loadMore, loadOmnifeed } from '$lib/feed.svelte'
+  import FeedControls, { type FeedFilter, type SourceFilter } from '../components/FeedControls.svelte'
+  import { isRead } from '$lib/read-history.svelte'
+  import { getCollections } from '$lib/collections.svelte'
 
   const kb = getKeyboardState()
   const feed = getFeedState()
+  const cols = getCollections()
   const algolia = new AlgoliaClient()
 
-  let source: ContentSource = $derived(
-    (new URLSearchParams(page.url.search).get('source') as ContentSource) ?? 'hackernews'
+  let sourceParam = $derived(
+    new URLSearchParams(page.url.search).get('source') as ContentSource | null
   )
+
+  let isOmnifeed = $derived(sourceParam === null)
+
+  let source: ContentSource = $derived(sourceParam ?? 'hackernews')
 
   let feedId: string = $derived(
     new URLSearchParams(page.url.search).get('feed') ?? SOURCES.find(s => s.id === source)?.feeds[0]?.id ?? 'top'
@@ -24,6 +31,29 @@
   )
 
   let isHn = $derived(source === SOURCE_ID.HN)
+
+  // Feed filter
+  let feedFilter = $state<FeedFilter>('all')
+  let omnifeedMode = $state<OmnifeedMode>('newest')
+  let sourceFilter = $state<SourceFilter>('all')
+  let savedIds = $derived(new Set(cols.value.flatMap(c => c.itemIds)))
+
+  let filteredItems = $derived.by(() => {
+    let result = feed.items
+    if (sourceFilter !== 'all') {
+      result = result.filter(item => item.source === sourceFilter)
+    }
+    if (feedFilter === 'unread') return result.filter(item => !isRead(item.id))
+    if (feedFilter === 'saved') return result.filter(item => savedIds.has(item.id))
+    return result
+  })
+
+  // Reset filter when source, feed, or tag changes
+  $effect(() => {
+    source; feedId; tag; isOmnifeed; omnifeedMode;
+    feedFilter = 'all'
+    sourceFilter = 'all'
+  })
 
   // Search state
   let searchInput: HTMLInputElement | undefined = $state()
@@ -38,20 +68,20 @@
   let searchSortByDate = $state(false)
 
   $effect(() => {
-    loadFeed(source, feedId, tag)
+    if (isOmnifeed) {
+      loadOmnifeed(omnifeedMode)
+    } else {
+      loadFeed(source, feedId, tag)
+    }
   })
 
   $effect(() => {
     if (searchActive) {
       kb.storyIds = searchResults.map(r => r.id)
     } else {
-      kb.storyIds = feed.items.map((s) => s.id)
+      kb.storyIds = filteredItems.map((s) => s.id)
     }
   })
-
-  export function focusSearch() {
-    searchInput?.focus()
-  }
 
   async function doSearch() {
     if (!searchQuery.trim()) return
@@ -125,41 +155,64 @@
   }}
 />
 
-{#if isHn}
-  <div class="search-bar" class:active={searchActive}>
-    <form class="search-form" onsubmit={handleSearchSubmit}>
-      <input
-        bind:this={searchInput}
-        class="search-input"
-        type="text"
-        placeholder="Search Hacker News..."
-        bind:value={searchInputValue}
-        onfocus={() => searchFocused = true}
-        onblur={() => { if (!searchActive) searchFocused = false }}
-        onkeydown={(e) => { if (e.key === 'Escape') { if (searchActive) clearSearch(); else { searchFocused = false; searchInputValue = ''; searchInput?.blur() } } }}
-      />
-      {#if searchFocused || searchActive}
+{#if !feed.loading}
+  {#if !isOmnifeed && searchActive && searchQuery}
+    <div class="search-controls">
+      <form class="search-form" onsubmit={handleSearchSubmit}>
+        <span class="search-field">
+          <span class="search-icon">⌕</span>
+          <input
+            bind:this={searchInput}
+            class="search-input"
+            type="text"
+            placeholder="Search HN..."
+            bind:value={searchInputValue}
+            onfocus={() => searchFocused = true}
+            onblur={() => { if (!searchActive) searchFocused = false }}
+            onkeydown={(e) => { if (e.key === 'Escape') { if (searchActive) clearSearch(); else { searchFocused = false; searchInputValue = ''; searchInput?.blur() } } }}
+          />
+        </span>
         <button class="search-btn" type="submit">Search</button>
-        {#if searchActive}
-          <button class="search-btn" type="button" onclick={clearSearch}>Clear</button>
-        {/if}
+        <button class="search-btn" type="button" onclick={clearSearch}>Clear</button>
+      </form>
+      <button class="sort-toggle" class:active={searchSortByDate} onclick={toggleSearchSort}>
+        {searchSortByDate ? 'By date' : 'By relevance'}
+      </button>
+    </div>
+  {:else}
+    <FeedControls
+      bind:filter={feedFilter}
+      bind:sourceFilter={sourceFilter}
+      bind:omnifeedMode={omnifeedMode}
+      {isOmnifeed}
+    >
+      {#if feed.tag}
+        <span class="tag-info">
+          <button class="back-link" onclick={() => history.back()}>← Back</button>
+          <span class="tag-label">Tag: <strong>{feed.tag}</strong></span>
+        </span>
+      {:else if isHn && !isOmnifeed}
+        <form class="search-form" onsubmit={handleSearchSubmit}>
+          <span class="search-field">
+            <span class="search-icon">⌕</span>
+            <input
+              bind:this={searchInput}
+              class="search-input"
+              type="text"
+              placeholder="Search HN..."
+              bind:value={searchInputValue}
+              onfocus={() => searchFocused = true}
+              onblur={() => { if (!searchActive) searchFocused = false }}
+              onkeydown={(e) => { if (e.key === 'Escape') { if (searchActive) clearSearch(); else { searchFocused = false; searchInputValue = ''; searchInput?.blur() } } }}
+            />
+          </span>
+          {#if searchFocused}
+            <button class="search-btn" type="submit">Search</button>
+          {/if}
+        </form>
       {/if}
-    </form>
-    {#if searchActive && searchQuery}
-      <div class="search-controls">
-        <button class="sort-toggle" class:active={searchSortByDate} onclick={toggleSearchSort}>
-          {searchSortByDate ? 'By date' : 'By relevance'}
-        </button>
-      </div>
-    {/if}
-  </div>
-{/if}
-
-{#if feed.tag && !searchActive}
-  <div class="tag-header">
-    <span class="tag-label">Tag: <strong>{feed.tag}</strong></span>
-    <a href="/?source={source}&feed={feedId}" class="tag-clear">Clear</a>
-  </div>
+    </FeedControls>
+  {/if}
 {/if}
 
 <div class="feed">
@@ -169,7 +222,7 @@
         <StoryCardSkeleton />
       {/each}
     {:else if searchResults.length > 0}
-      {#each searchResults as item, i}
+      {#each searchResults as item, i (item.id)}
         <StoryCard {item} index={i} selected={i === kb.selectedIndex} />
       {/each}
       <div class="pagination">
@@ -184,8 +237,8 @@
     {#each Array(10) as _}
       <StoryCardSkeleton />
     {/each}
-  {:else}
-    {#each feed.items as item, i}
+  {:else if filteredItems.length > 0}
+    {#each filteredItems as item, i (item.id)}
       <StoryCard {item} index={i} selected={i === kb.selectedIndex} />
     {/each}
     {#if feed.loadingMore}
@@ -193,24 +246,47 @@
         <StoryCardSkeleton />
       {/each}
     {/if}
+  {:else if feedFilter === 'unread'}
+    <p class="no-results">No unread items.</p>
+  {:else if feedFilter === 'saved'}
+    <p class="no-results">No saved items in this feed.</p>
   {/if}
 </div>
 
 <style>
-  .search-bar {
-    padding: 8px 0;
+  .search-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 0;
     border-bottom: 1px solid var(--color-border);
   }
 
   .search-form {
     display: flex;
-    gap: 8px;
+    gap: 6px;
+    margin-right: auto;
+  }
+
+  .search-field {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 5px;
+    font-size: 1.2rem;
+    color: var(--color-text-faint);
+    pointer-events: none;
+    line-height: 1;
   }
 
   .search-input {
-    flex: 1;
-    padding: 6px 10px;
-    font-size: 0.85rem;
+    width: 180px;
+    padding: 3px 8px 3px 22px;
+    font-size: 0.8rem;
     font-family: var(--font-sans);
     background: var(--color-surface);
     border: 1px solid var(--color-border);
@@ -227,8 +303,8 @@
   }
 
   .search-btn {
-    padding: 6px 12px;
-    font-size: 0.8rem;
+    padding: 3px 8px;
+    font-size: 0.75rem;
     background: var(--color-surface);
     border: 1px solid var(--color-border);
     color: var(--color-text-muted);
@@ -239,16 +315,10 @@
     color: var(--color-text);
   }
 
-  .search-controls {
-    display: flex;
-    gap: 8px;
-    margin-top: 6px;
-  }
-
   .sort-toggle {
     font-size: 0.75rem;
     color: var(--color-text-faint);
-    padding: 3px 8px;
+    padding: 2px 5px;
     border: 1px solid var(--color-border);
   }
 
@@ -261,27 +331,25 @@
     color: var(--color-text);
   }
 
-  .tag-header {
+  .tag-info {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 8px 0;
-    border-bottom: 1px solid var(--color-border);
+    gap: 12px;
+    margin-right: auto;
     font-size: 0.85rem;
+  }
+
+  .back-link {
+    font-size: 0.8rem;
+    color: var(--color-text-faint);
+  }
+
+  .back-link:hover {
+    color: var(--color-accent);
   }
 
   .tag-label {
     color: var(--color-text-muted);
-  }
-
-  .tag-clear {
-    color: var(--color-text-faint);
-    text-decoration: none;
-    font-size: 0.8rem;
-  }
-
-  .tag-clear:hover {
-    color: var(--color-accent);
   }
 
   .feed {
