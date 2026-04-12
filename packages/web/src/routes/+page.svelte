@@ -48,9 +48,9 @@
     return result
   })
 
-  // Reset filter when source, feed, or tag changes
+  // Reset filter when view context changes (not on mode switch within omnifeed)
   $effect(() => {
-    source; feedId; tag; isOmnifeed; omnifeedMode;
+    source; feedId; tag; isOmnifeed;
     feedFilter = 'all'
     sourceFilter = 'all'
   })
