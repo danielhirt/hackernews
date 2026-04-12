@@ -30,6 +30,18 @@ export interface User {
   submitted?: number[]
 }
 
+export interface LobstersUser {
+  username: string
+  created_at: string
+  about: string
+  avatar_url: string
+  invited_by_user?: string
+  github_username?: string
+  mastodon_username?: string
+  is_admin: boolean
+  is_moderator: boolean
+}
+
 export interface Collection {
   id: string
   name: string

@@ -629,7 +629,7 @@
   }
 
   .summary-toggle-icon {
-    font-size: 1.1rem;
+    font-size: 0.95rem;
     color: var(--color-text-muted);
     line-height: 0;
   }
@@ -641,7 +641,7 @@
   }
 
   .action-icon {
-    font-size: 0.95rem;
+    font-size: 0.85rem;
     color: var(--color-text-faint);
     padding: 0 2px;
     line-height: 1;
@@ -822,7 +822,7 @@
   }
 
   .control-icon {
-    font-size: 0.95rem;
+    font-size: 0.85rem;
     color: var(--color-text-faint);
     line-height: 1;
     padding: 0 2px;

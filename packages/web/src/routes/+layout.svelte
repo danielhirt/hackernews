@@ -3,6 +3,9 @@
   import NavBar from '../components/NavBar.svelte'
   import ScrollToTop from '../components/ScrollToTop.svelte'
   import { handleKeydown } from '$lib/keyboard.svelte'
+  import { getSettings } from '$lib/settings.svelte'
+
+  getSettings()
 
   let { children } = $props()
 

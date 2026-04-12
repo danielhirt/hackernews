@@ -205,7 +205,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.1rem;
+    font-size: 0.95rem;
     line-height: 1;
     color: var(--color-text-faint);
     text-decoration: none;
@@ -216,6 +216,7 @@
   }
 
   .settings-icon {
-    font-size: 1.55rem;
+    font-size: 1.3rem;
+    margin-top: -2px;
   }
 </style>

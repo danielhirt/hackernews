@@ -1,4 +1,4 @@
-import type { FeedItem, CommentItem } from './models.js'
+import type { FeedItem, CommentItem, LobstersUser } from './models.js'
 
 type FetchFn = typeof globalThis.fetch
 
@@ -65,6 +65,12 @@ export class LobstersClient {
 
     const stories: LobstersStory[] = await res.json()
     return stories.map(lobstersToFeedItem)
+  }
+
+  async fetchUser(username: string): Promise<LobstersUser> {
+    const res = await this.fetch(`${this.baseUrl}/~${username}.json`)
+    if (!res.ok) throw new Error(`Lobsters API error: ${res.status}`)
+    return res.json()
   }
 
   async fetchTag(tag: string, page: number): Promise<FeedItem[]> {

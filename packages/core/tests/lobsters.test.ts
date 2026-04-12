@@ -183,4 +183,67 @@ describe('LobstersClient', () => {
       await expect(client.fetchTag('nonexistent', 0)).rejects.toThrow('Lobsters API error: 404')
     })
   })
+
+  describe('fetchUser', () => {
+    const mockUser = {
+      username: 'pushcx',
+      created_at: '2012-08-14T20:25:08.000-05:00',
+      is_admin: true,
+      is_moderator: true,
+      about: '<p>Site admin</p>',
+      avatar_url: '/avatars/pushcx-100.png',
+      invited_by_user: 'jcs',
+      github_username: 'pushcx',
+      mastodon_username: 'lobsters',
+    }
+
+    it('fetches /~{username}.json', async () => {
+      const fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockUser),
+      })
+      const client = new LobstersClient(fetch as any)
+
+      await client.fetchUser('pushcx')
+
+      expect(fetch).toHaveBeenCalledWith('https://lobste.rs/~pushcx.json')
+    })
+
+    it('returns user data with all fields', async () => {
+      const fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockUser),
+      })
+      const client = new LobstersClient(fetch as any)
+
+      const user = await client.fetchUser('pushcx')
+
+      expect(user.username).toBe('pushcx')
+      expect(user.created_at).toBe('2012-08-14T20:25:08.000-05:00')
+      expect(user.is_admin).toBe(true)
+      expect(user.about).toBe('<p>Site admin</p>')
+      expect(user.avatar_url).toBe('/avatars/pushcx-100.png')
+      expect(user.invited_by_user).toBe('jcs')
+      expect(user.github_username).toBe('pushcx')
+    })
+
+    it('uses custom baseUrl', async () => {
+      const fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockUser),
+      })
+      const client = new LobstersClient(fetch as any, '/api/lobsters?path=')
+
+      await client.fetchUser('testuser')
+
+      expect(fetch).toHaveBeenCalledWith('/api/lobsters?path=/~testuser.json')
+    })
+
+    it('throws on non-ok response', async () => {
+      const fetch = vi.fn().mockResolvedValue({ ok: false, status: 404 })
+      const client = new LobstersClient(fetch as any)
+
+      await expect(client.fetchUser('nonexistent')).rejects.toThrow('Lobsters API error: 404')
+    })
+  })
 })

@@ -272,3 +272,112 @@ describe('sortCommentTree', () => {
     expect(sortCommentTree([], 'newest')).toEqual([])
   })
 })
+
+describe('collection item sorting and filtering', () => {
+  interface CollectionItem {
+    id: string
+    title: string
+    author: string
+    timestamp: number
+    score: number
+    commentCount: number
+    source: string
+  }
+
+  function makeItem(overrides: Partial<CollectionItem> & { id: string }): CollectionItem {
+    return {
+      title: `Item ${overrides.id}`,
+      author: 'user',
+      timestamp: 1000,
+      score: 10,
+      commentCount: 0,
+      source: 'hackernews',
+      ...overrides,
+    }
+  }
+
+  function sortItems(items: CollectionItem[], mode: string): CollectionItem[] {
+    const sorted = [...items]
+    switch (mode) {
+      case 'newest': sorted.sort((a, b) => b.timestamp - a.timestamp); break
+      case 'oldest': sorted.sort((a, b) => a.timestamp - b.timestamp); break
+      case 'points': sorted.sort((a, b) => b.score - a.score); break
+      case 'discussed': sorted.sort((a, b) => b.commentCount - a.commentCount); break
+    }
+    return sorted
+  }
+
+  function filterItems(items: CollectionItem[], query: string): CollectionItem[] {
+    const q = query.trim().toLowerCase()
+    if (!q) return items
+    return items.filter((i) =>
+      i.title.toLowerCase().includes(q) || i.author.toLowerCase().includes(q)
+    )
+  }
+
+  const items = [
+    makeItem({ id: 'hn:1', title: 'Alpha Post', author: 'alice', timestamp: 300, score: 50, commentCount: 10 }),
+    makeItem({ id: 'lo:2', title: 'Beta Article', author: 'bob', timestamp: 100, score: 200, commentCount: 5, source: 'lobsters' }),
+    makeItem({ id: 'dev:3', title: 'Gamma Guide', author: 'carol', timestamp: 500, score: 10, commentCount: 100, source: 'devto' }),
+  ]
+
+  it('sorts by newest first', () => {
+    expect(sortItems(items, 'newest').map((i) => i.id)).toEqual(['dev:3', 'hn:1', 'lo:2'])
+  })
+
+  it('sorts by oldest first', () => {
+    expect(sortItems(items, 'oldest').map((i) => i.id)).toEqual(['lo:2', 'hn:1', 'dev:3'])
+  })
+
+  it('sorts by points descending', () => {
+    expect(sortItems(items, 'points').map((i) => i.id)).toEqual(['lo:2', 'hn:1', 'dev:3'])
+  })
+
+  it('sorts by most discussed descending', () => {
+    expect(sortItems(items, 'discussed').map((i) => i.id)).toEqual(['dev:3', 'hn:1', 'lo:2'])
+  })
+
+  it('returns original order for unknown sort mode', () => {
+    expect(sortItems(items, 'saved').map((i) => i.id)).toEqual(['hn:1', 'lo:2', 'dev:3'])
+  })
+
+  it('does not mutate original array', () => {
+    const original = items.map((i) => i.id)
+    sortItems(items, 'newest')
+    expect(items.map((i) => i.id)).toEqual(original)
+  })
+
+  it('filters by title substring', () => {
+    expect(filterItems(items, 'alpha').map((i) => i.id)).toEqual(['hn:1'])
+  })
+
+  it('filters by author substring', () => {
+    expect(filterItems(items, 'bob').map((i) => i.id)).toEqual(['lo:2'])
+  })
+
+  it('filters case-insensitively', () => {
+    expect(filterItems(items, 'GAMMA').map((i) => i.id)).toEqual(['dev:3'])
+  })
+
+  it('returns all items for empty query', () => {
+    expect(filterItems(items, '').map((i) => i.id)).toEqual(['hn:1', 'lo:2', 'dev:3'])
+  })
+
+  it('returns all items for whitespace-only query', () => {
+    expect(filterItems(items, '   ').map((i) => i.id)).toEqual(['hn:1', 'lo:2', 'dev:3'])
+  })
+
+  it('returns empty when no items match', () => {
+    expect(filterItems(items, 'nonexistent')).toEqual([])
+  })
+
+  it('filters by partial title match', () => {
+    expect(filterItems(items, 'art').map((i) => i.id)).toEqual(['lo:2'])
+  })
+
+  it('combines sort and filter', () => {
+    const filtered = filterItems(items, 'a')
+    const sorted = sortItems(filtered, 'newest')
+    expect(sorted.map((i) => i.id)).toEqual(['dev:3', 'hn:1', 'lo:2'])
+  })
+})

@@ -176,25 +176,26 @@ describe('StoryCard text toggle', () => {
   })
 
   describe('expand/collapse controls', () => {
-    it('shows expand icon by default', async () => {
+    it('shows "Show more" text button by default', async () => {
       const { container } = render(StoryCard, {
         props: { item: makeItem({ text: '<p>Content</p>' }), index: 0 },
       })
       await fireEvent.click(container.querySelector('.text-toggle')!)
-      const buttons = container.querySelectorAll('.action-icon')
-      expect(buttons[0].textContent?.trim()).toBe('▸')
+      const textBtn = container.querySelector('.action-text')!
+      expect(textBtn.textContent?.trim()).toBe('Show more')
     })
 
-    it('shows three action icons (expand, copy, close)', async () => {
+    it('shows text action plus two icon actions (copy, close)', async () => {
       const { container } = render(StoryCard, {
         props: { item: makeItem({ text: '<p>Content</p>' }), index: 0 },
       })
       await fireEvent.click(container.querySelector('.text-toggle')!)
-      const buttons = container.querySelectorAll('.action-icon')
-      expect(buttons).toHaveLength(3)
-      expect(buttons[0].textContent?.trim()).toBe('▸')
-      expect(buttons[1].textContent?.trim()).toBe('⧉')
-      expect(buttons[2].textContent?.trim()).toBe('✕')
+      const textBtn = container.querySelector('.action-text')!
+      expect(textBtn.textContent?.trim()).toBe('Show more')
+      const icons = container.querySelectorAll('.action-icon')
+      expect(icons).toHaveLength(2)
+      expect(icons[0].textContent?.trim()).toBe('⧉')
+      expect(icons[1].textContent?.trim()).toBe('✕')
     })
 
     it('toggles text-content to expanded on "Show more" click', async () => {
@@ -205,19 +206,19 @@ describe('StoryCard text toggle', () => {
       const content = container.querySelector('.text-content')!
       expect(content.classList.contains('expanded')).toBe(false)
 
-      const showMore = container.querySelectorAll('.action-icon')[0]
+      const showMore = container.querySelector('.action-text')!
       await fireEvent.click(showMore)
       expect(content.classList.contains('expanded')).toBe(true)
     })
 
-    it('changes ▸ to ▾ when expanded', async () => {
+    it('changes to "Show less" when expanded', async () => {
       const { container } = render(StoryCard, {
         props: { item: makeItem({ text: '<p>Content</p>' }), index: 0 },
       })
       await fireEvent.click(container.querySelector('.text-toggle')!)
-      const expandBtn = container.querySelectorAll('.action-icon')[0]
+      const expandBtn = container.querySelector('.action-text')!
       await fireEvent.click(expandBtn)
-      expect(expandBtn.textContent?.trim()).toBe('▾')
+      expect(expandBtn.textContent?.trim()).toBe('Show less')
     })
 
     it('collapses back to preview on "Show less" click', async () => {
@@ -225,12 +226,12 @@ describe('StoryCard text toggle', () => {
         props: { item: makeItem({ text: '<p>Content</p>' }), index: 0 },
       })
       await fireEvent.click(container.querySelector('.text-toggle')!)
-      const toggle = container.querySelectorAll('.action-icon')[0]
+      const toggle = container.querySelector('.action-text')!
       await fireEvent.click(toggle) // expand
       await fireEvent.click(toggle) // collapse
       const content = container.querySelector('.text-content')!
       expect(content.classList.contains('expanded')).toBe(false)
-      expect(toggle.textContent?.trim()).toBe('▸')
+      expect(toggle.textContent?.trim()).toBe('Show more')
     })
 
     it('closes the entire panel on "Collapse" click', async () => {
@@ -240,7 +241,7 @@ describe('StoryCard text toggle', () => {
       await fireEvent.click(container.querySelector('.text-toggle')!)
       expect(container.querySelector('.text-panel')).toBeTruthy()
 
-      const collapse = container.querySelectorAll('.action-icon')[2]
+      const collapse = container.querySelectorAll('.action-icon')[1]
       await fireEvent.click(collapse)
       expect(container.querySelector('.text-panel')).toBeNull()
     })
@@ -253,7 +254,7 @@ describe('StoryCard text toggle', () => {
 
       // Open and expand
       await fireEvent.click(toggleBtn)
-      await fireEvent.click(container.querySelectorAll('.action-icon')[0])
+      await fireEvent.click(container.querySelector('.action-text')!)
       expect(container.querySelector('.text-content.expanded')).toBeTruthy()
 
       // Close via toggle
@@ -274,10 +275,10 @@ describe('StoryCard text toggle', () => {
 
       // Open and expand
       await fireEvent.click(toggleBtn)
-      await fireEvent.click(container.querySelectorAll('.action-icon')[0])
+      await fireEvent.click(container.querySelector('.action-text')!)
 
       // Collapse
-      await fireEvent.click(container.querySelectorAll('.action-icon')[2])
+      await fireEvent.click(container.querySelectorAll('.action-icon')[1])
 
       // Reopen — should be in preview mode
       await fireEvent.click(toggleBtn)
@@ -295,7 +296,7 @@ describe('StoryCard text toggle', () => {
       await fireEvent.click(toggleBtn)
       expect(toggleBtn.textContent).toBe('▾')
 
-      await fireEvent.click(container.querySelectorAll('.action-icon')[2])
+      await fireEvent.click(container.querySelectorAll('.action-icon')[1])
       expect(toggleBtn.textContent).toBe('▸')
     })
 
@@ -457,12 +458,13 @@ describe('StoryCard AI summary', () => {
         expect(container.querySelector('.summary-content')).toBeTruthy()
       })
       const section = container.querySelector('.summary-section')!
-      const buttons = section.querySelectorAll('.action-icon')
-      expect(buttons).toHaveLength(4)
-      expect(buttons[0].textContent?.trim()).toBe('▸')
-      expect(buttons[1].textContent?.trim()).toBe('⧉')
-      expect(buttons[2].textContent?.trim()).toBe('↻')
-      expect(buttons[3].textContent?.trim()).toBe('✕')
+      const textBtn = section.querySelector('.action-text')!
+      expect(textBtn.textContent?.trim()).toBe('Show more')
+      const icons = section.querySelectorAll('.action-icon')
+      expect(icons).toHaveLength(3)
+      expect(icons[0].textContent?.trim()).toBe('⧉')
+      expect(icons[1].textContent?.trim()).toBe('↻')
+      expect(icons[2].textContent?.trim()).toBe('✕')
     })
 
     it('toggles summary expanded state on Show more click', async () => {
@@ -477,10 +479,10 @@ describe('StoryCard AI summary', () => {
       const summaryContent = container.querySelector('.summary-content')!
       expect(summaryContent.classList.contains('expanded')).toBe(false)
 
-      const showMore = container.querySelector('.summary-section')!.querySelectorAll('.action-icon')[0]
+      const showMore = container.querySelector('.summary-section .action-text')!
       await fireEvent.click(showMore)
       expect(summaryContent.classList.contains('expanded')).toBe(true)
-      expect(showMore.textContent?.trim()).toBe('▾')
+      expect(showMore.textContent?.trim()).toBe('Show less')
     })
 
     it('clears summary on Dismiss click', async () => {
@@ -492,7 +494,7 @@ describe('StoryCard AI summary', () => {
       await vi.waitFor(() => {
         expect(container.querySelector('.summary-content')).toBeTruthy()
       })
-      const dismiss = container.querySelector('.summary-section')!.querySelectorAll('.action-icon')[3]
+      const dismiss = container.querySelector('.summary-section')!.querySelectorAll('.action-icon')[2]
       await fireEvent.click(dismiss)
       expect(container.querySelector('.summary-section')).toBeNull()
       expect(mockClearSummary).toHaveBeenCalledWith('hn:7')
@@ -509,7 +511,7 @@ describe('StoryCard AI summary', () => {
       await vi.waitFor(() => {
         expect(container.querySelector('.summary-content')).toBeTruthy()
       })
-      const regen = container.querySelector('.summary-section')!.querySelectorAll('.action-icon')[2]
+      const regen = container.querySelector('.summary-section')!.querySelectorAll('.action-icon')[1]
       await fireEvent.click(regen)
       await vi.waitFor(() => {
         expect(fetch).toHaveBeenCalledTimes(2)
@@ -613,7 +615,7 @@ describe('StoryCard AI summary', () => {
         expect(container.querySelector('.summary-content')).toBeTruthy()
       })
       const buttons = container.querySelector('.summary-section')!.querySelectorAll('.action-icon')
-      expect(buttons[1].textContent?.trim()).toBe('⧉')
+      expect(buttons[0].textContent?.trim()).toBe('⧉')
     })
 
     it('copies summary text to clipboard on click', async () => {
@@ -625,7 +627,7 @@ describe('StoryCard AI summary', () => {
       await vi.waitFor(() => {
         expect(container.querySelector('.summary-content')).toBeTruthy()
       })
-      const copyBtn = container.querySelector('.summary-section')!.querySelectorAll('.action-icon')[1]
+      const copyBtn = container.querySelector('.summary-section')!.querySelectorAll('.action-icon')[0]
       await fireEvent.click(copyBtn)
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith('summary to copy')
     })
@@ -639,7 +641,7 @@ describe('StoryCard AI summary', () => {
       await vi.waitFor(() => {
         expect(container.querySelector('.summary-content')).toBeTruthy()
       })
-      const copyBtn = container.querySelector('.summary-section')!.querySelectorAll('.action-icon')[1]
+      const copyBtn = container.querySelector('.summary-section')!.querySelectorAll('.action-icon')[0]
       await fireEvent.click(copyBtn)
       expect(copyBtn.textContent?.trim()).toBe('✓')
     })
@@ -722,7 +724,7 @@ describe('StoryCard AI summary', () => {
         expect(container.querySelector('.summary-content')).toBeTruthy()
       })
       // Dismiss the summary
-      const dismiss = container.querySelector('.summary-section')!.querySelectorAll('.action-icon')[3]
+      const dismiss = container.querySelector('.summary-section')!.querySelectorAll('.action-icon')[2]
       await fireEvent.click(dismiss)
       // Panel should still be open with OP text
       expect(container.querySelector('.text-panel')).toBeTruthy()
@@ -739,7 +741,7 @@ describe('StoryCard AI summary', () => {
       })
       await fireEvent.click(container.querySelector('.text-toggle')!)
       // Expand summary only
-      const summaryShowMore = container.querySelector('.summary-section')!.querySelectorAll('.action-icon')[0]
+      const summaryShowMore = container.querySelector('.summary-section .action-text')!
       await fireEvent.click(summaryShowMore)
       // Summary expanded, OP text still in preview
       expect(container.querySelector('.summary-content')!.classList.contains('expanded')).toBe(true)
@@ -753,7 +755,7 @@ describe('StoryCard AI summary', () => {
       })
       await fireEvent.click(container.querySelector('.text-toggle')!)
       // Expand OP text only
-      const textShowMore = container.querySelectorAll('.panel-actions')[0].querySelectorAll('.action-icon')[0]
+      const textShowMore = container.querySelectorAll('.panel-actions')[0].querySelector('.action-text')!
       await fireEvent.click(textShowMore)
       // OP text expanded, summary still in preview
       expect(container.querySelector('.text-content')!.classList.contains('expanded')).toBe(true)

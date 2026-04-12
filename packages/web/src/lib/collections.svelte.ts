@@ -56,12 +56,12 @@ export async function deleteCollection(id: string): Promise<void> {
 export async function renameCollection(id: string, name: string): Promise<void> {
   await ensureInit()
   if (!adapter) return
-  const col = await adapter.getCollection(id)
+  const col = collections.find((c) => c.id === id)
   if (!col) return
   col.name = name
   col.updatedAt = Date.now()
-  await adapter.saveCollection(col)
-  await refresh()
+  await adapter.saveCollection({ id: col.id, name: col.name, color: col.color, itemIds: [...col.itemIds], createdAt: col.createdAt, updatedAt: col.updatedAt })
+  collections = [...collections]
 }
 
 export async function updateCollectionColor(id: string, color: string): Promise<void> {

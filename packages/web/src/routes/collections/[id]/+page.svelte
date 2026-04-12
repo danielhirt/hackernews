@@ -2,10 +2,11 @@
   import { page } from '$app/state'
   import {
     HnClient, LobstersClient, DevtoClient,
-    type Story, type FeedItem,
-    storyToFeedItem, parseItemId, SOURCE_ID,
+    type Story, type FeedItem, type ContentSource,
+    storyToFeedItem, parseItemId, SOURCE_ID, SOURCES,
+    DEFAULT_COLLECTION_ID,
   } from '@hackernews/core'
-  import { getCollections, removeFromCollection } from '$lib/collections.svelte'
+  import { getCollections, removeFromCollection, renameCollection } from '$lib/collections.svelte'
   import StoryCard from '../../../components/StoryCard.svelte'
 
   const hnClient = new HnClient()
@@ -13,11 +14,43 @@
   const devtoClient = new DevtoClient()
   const cols = getCollections()
 
+  type SortMode = 'saved' | 'newest' | 'oldest' | 'points' | 'discussed'
+
   let items: FeedItem[] = $state([])
   let loading = $state(true)
+  let searchQuery = $state('')
+  let sortMode: SortMode = $state('saved')
+  let sourceFilter: ContentSource | 'all' = $state('all')
 
   let collectionId = $derived(page.params.id)
   let collection = $derived(cols.value.find((c) => c.id === collectionId))
+
+  let availableSources = $derived.by(() => {
+    const sources = new Set(items.map((i) => i.source))
+    return SOURCES.filter((s) => sources.has(s.id))
+  })
+
+  let filteredItems = $derived.by(() => {
+    let result = items
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase()
+      result = result.filter((i) =>
+        i.title.toLowerCase().includes(q) || i.author.toLowerCase().includes(q)
+      )
+    }
+    if (sourceFilter !== 'all') {
+      result = result.filter((i) => i.source === sourceFilter)
+    }
+    if (sortMode === 'saved') return result
+    const sorted = [...result]
+    switch (sortMode) {
+      case 'newest': sorted.sort((a, b) => b.timestamp - a.timestamp); break
+      case 'oldest': sorted.sort((a, b) => a.timestamp - b.timestamp); break
+      case 'points': sorted.sort((a, b) => b.score - a.score); break
+      case 'discussed': sorted.sort((a, b) => b.commentCount - a.commentCount); break
+    }
+    return sorted
+  })
 
   $effect(() => {
     if (collection) {
@@ -78,6 +111,22 @@
     return results.filter((item): item is FeedItem => item !== null)
   }
 
+  let editing = $state(false)
+  let editName = $state('')
+
+  function startEdit() {
+    if (!collection) return
+    editName = collection.name
+    editing = true
+  }
+
+  async function finishEdit() {
+    if (editName.trim() && collection) {
+      await renameCollection(collection.id, editName.trim())
+    }
+    editing = false
+  }
+
   async function handleRemove(itemId: string) {
     await removeFromCollection(collectionId, itemId)
   }
@@ -85,20 +134,63 @@
 
 {#if collection}
   <div class="collection-view">
+    <a href="/collections" class="back-link">← Back</a>
     <div class="header">
-      <div class="color-dot" style="background: {collection.color}"></div>
-      <h1>{collection.name}</h1>
-      <span class="count">{collection.itemIds.length}</span>
+      <div class="controls-left">
+        <div class="color-dot" style="background: {collection.color}"></div>
+        {#if editing}
+          <input
+            type="text"
+            class="edit-name"
+            bind:value={editName}
+            onkeydown={(e) => { if (e.key === 'Enter') finishEdit(); if (e.key === 'Escape') editing = false; }}
+          />
+          <button class="action-icon" onclick={finishEdit} title="Save">✓</button>
+          <button class="action-icon" onclick={() => editing = false} title="Cancel">✕</button>
+        {:else}
+          <h1>{collection.name}</h1>
+          {#if collection.id !== DEFAULT_COLLECTION_ID}
+            <button class="rename-icon" onclick={startEdit} title="Rename">✎</button>
+          {/if}
+        {/if}
+        <span class="count">{collection.itemIds.length}</span>
+        {#if !loading && items.length > 0}
+          <input
+            type="text"
+            class="search-input"
+            placeholder="Search..."
+            bind:value={searchQuery}
+          />
+        {/if}
+      </div>
+      {#if !loading && items.length > 0}
+        <div class="controls-right">
+          <button class="control-btn" class:active={sortMode === 'saved'} onclick={() => sortMode = 'saved'}>Saved</button>
+          <button class="control-btn" class:active={sortMode === 'newest'} onclick={() => sortMode = 'newest'}>Newest</button>
+          <button class="control-btn" class:active={sortMode === 'oldest'} onclick={() => sortMode = 'oldest'}>Oldest</button>
+          <button class="control-btn" class:active={sortMode === 'points'} onclick={() => sortMode = 'points'}>Points</button>
+          <button class="control-btn" class:active={sortMode === 'discussed'} onclick={() => sortMode = 'discussed'}>Discussed</button>
+          {#if availableSources.length > 1}
+            <span class="controls-sep">|</span>
+            <button class="control-btn" class:active={sourceFilter === 'all'} onclick={() => sourceFilter = 'all'}>All</button>
+            {#each availableSources as src}
+              <button class="control-btn" class:active={sourceFilter === src.id} onclick={() => sourceFilter = src.id}>{src.shortName}</button>
+            {/each}
+          {/if}
+        </div>
+      {/if}
     </div>
 
     {#if loading}
       <p class="loading">Loading...</p>
     {:else if items.length === 0}
       <p class="empty">Empty.</p>
+    {:else if filteredItems.length === 0}
+      <p class="empty">No items match "{searchQuery.trim()}"</p>
     {:else}
-      {#each items as item, i (item.id)}
+      {#each filteredItems as item, i (item.id)}
         <div class="saved-story">
-          <StoryCard {item} index={i} showSourceBadge={true} />
+          <StoryCard {item} index={i} showSourceBadge={availableSources.length > 1} />
           <button class="remove-btn" onclick={() => handleRemove(item.id)} title="Remove from collection">✕</button>
         </div>
       {/each}
@@ -114,13 +206,36 @@
     flex-direction: column;
   }
 
+  .back-link {
+    font-size: 0.8rem;
+    color: var(--color-text-faint);
+    text-decoration: none;
+    margin-bottom: 8px;
+  }
+
+  .back-link:hover {
+    color: var(--color-accent);
+  }
+
   .header {
     display: flex;
-    align-items: baseline;
-    gap: 10px;
-    padding-bottom: 12px;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
     border-bottom: 1px solid var(--color-border);
     margin-bottom: 8px;
+  }
+
+  .controls-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .controls-right {
+    display: flex;
+    align-items: center;
+    gap: 2px;
   }
 
   .color-dot {
@@ -137,6 +252,80 @@
   .count {
     font-size: 0.8rem;
     color: var(--color-text-faint);
+  }
+
+  .rename-icon {
+    font-size: 0.85rem;
+    color: var(--color-text-faint);
+    line-height: 1;
+    padding: 0 2px;
+  }
+
+  .rename-icon:hover {
+    color: var(--color-accent);
+  }
+
+  .edit-name {
+    padding: 2px 8px;
+    background: var(--color-bg);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 600;
+    width: 180px;
+  }
+
+  .action-btn {
+    font-size: 0.75rem;
+    color: var(--color-text-faint);
+    padding: 2px 6px;
+  }
+
+  .action-btn:hover {
+    color: var(--color-text-muted);
+  }
+
+  .search-input {
+    padding: 3px 8px;
+    background: var(--color-bg);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    font-family: inherit;
+    font-size: 0.75rem;
+    width: 120px;
+    margin-left: 4px;
+  }
+
+  .search-input::placeholder {
+    color: var(--color-text-faint);
+  }
+
+  .search-input:focus {
+    border-color: var(--color-text-faint);
+    outline: none;
+  }
+
+  .controls-sep {
+    color: var(--color-border);
+    font-size: 0.75rem;
+    margin: 0 2px;
+  }
+
+  .control-btn {
+    font-size: 0.75rem;
+    color: var(--color-text-faint);
+    padding: 2px 5px;
+    border: 1px solid transparent;
+  }
+
+  .control-btn:hover {
+    color: var(--color-text);
+  }
+
+  .control-btn.active {
+    color: var(--color-accent);
+    border-color: var(--color-accent);
   }
 
   .loading,

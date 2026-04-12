@@ -157,6 +157,7 @@
           e.preventDefault()
           e.stopPropagation()
           if (isHn) window.location.href = `/user/${item.author}`
+          else if (item.source === SOURCE_ID.LOBSTERS) window.location.href = `/user/${item.author}?source=lobsters`
         }}>
           {item.author}
         </button>
@@ -205,9 +206,10 @@
           {@html item.text}
         </div>
         <div class="panel-actions">
-          <button class="action-icon" onclick={() => textExpanded = !textExpanded} title={textExpanded ? 'Show less' : 'Show more'}>
-            {textExpanded ? '▾' : '▸'}
+          <button class="action-text" onclick={() => textExpanded = !textExpanded}>
+            {textExpanded ? 'Show less' : 'Show more'}
           </button>
+          <span class="action-divider">|</span>
           <button class="action-icon" onclick={copyOpText} title="Copy">
             {opCopied ? '✓' : '⧉'}
           </button>
@@ -236,9 +238,10 @@
           {/if}
           {#if summaryText && !summaryLoading}
             <div class="panel-actions">
-              <button class="action-icon" onclick={() => summaryExpanded = !summaryExpanded} title={summaryExpanded ? 'Show less' : 'Show more'}>
-                {summaryExpanded ? '▾' : '▸'}
+              <button class="action-text" onclick={() => summaryExpanded = !summaryExpanded}>
+                {summaryExpanded ? 'Show less' : 'Show more'}
               </button>
+              <span class="action-divider">|</span>
               <button class="action-icon" onclick={copySummary} title="Copy">
                 {summaryCopied ? '✓' : '⧉'}
               </button>
@@ -333,6 +336,7 @@
     align-items: center;
     gap: 4px;
     flex-shrink: 0;
+    min-width: 124px;
     line-height: 1;
   }
 
@@ -344,7 +348,7 @@
     height: 28px;
     font-size: 1.7rem;
     line-height: 0;
-    margin-top: -2px;
+    margin-top: -4px;
     color: var(--color-text-faint);
     opacity: 0.4;
     transition: opacity 0.15s, color 0.15s;
@@ -419,10 +423,26 @@
   }
 
   .action-icon {
-    font-size: 0.95rem;
+    font-size: 0.85rem;
     color: var(--color-text-faint);
     padding: 0 2px;
     line-height: 1;
+  }
+
+  .action-text {
+    font-size: 0.7rem;
+    color: var(--color-text-faint);
+    padding: 0 2px;
+  }
+
+  .action-text:hover {
+    color: var(--color-accent);
+  }
+
+  .action-divider {
+    color: var(--color-border);
+    font-size: 0.75rem;
+    user-select: none;
   }
 
   .action-icon:hover {

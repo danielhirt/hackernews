@@ -47,6 +47,8 @@
         </button>
         {#if isHn}
           <a href="/user/{comment.author}" class="author">{comment.author}</a>
+        {:else if comment.source === SOURCE_ID.LOBSTERS}
+          <a href="/user/{comment.author}?source=lobsters" class="author">{comment.author}</a>
         {:else}
           <span class="author">{comment.author}</span>
         {/if}

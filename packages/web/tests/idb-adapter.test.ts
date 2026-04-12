@@ -71,4 +71,49 @@ describe('IdbStorageAdapter', () => {
     const cols = await adapter.getCollectionsForItem(42)
     expect(cols).toHaveLength(2)
   })
+
+  it('renames a collection via saveCollection', async () => {
+    const col = await adapter.getCollection(DEFAULT_COLLECTION_ID)
+    expect(col).not.toBeNull()
+    col!.name = 'Bookmarks'
+    col!.updatedAt = Date.now()
+    await adapter.saveCollection(col!)
+    const updated = await adapter.getCollection(DEFAULT_COLLECTION_ID)
+    expect(updated!.name).toBe('Bookmarks')
+  })
+
+  it('preserves itemIds when renaming', async () => {
+    await adapter.addToCollection(DEFAULT_COLLECTION_ID, 'hn:1')
+    await adapter.addToCollection(DEFAULT_COLLECTION_ID, 'lo:abc')
+    const col = await adapter.getCollection(DEFAULT_COLLECTION_ID)
+    col!.name = 'Renamed'
+    await adapter.saveCollection(col!)
+    const updated = await adapter.getCollection(DEFAULT_COLLECTION_ID)
+    expect(updated!.itemIds).toContain('hn:1')
+    expect(updated!.itemIds).toContain('lo:abc')
+    expect(updated!.name).toBe('Renamed')
+  })
+
+  it('adds string-prefixed item IDs to collection', async () => {
+    await adapter.addToCollection(DEFAULT_COLLECTION_ID, 'hn:100')
+    await adapter.addToCollection(DEFAULT_COLLECTION_ID, 'dev:200')
+    const col = await adapter.getCollection(DEFAULT_COLLECTION_ID)
+    expect(col!.itemIds).toContain('hn:100')
+    expect(col!.itemIds).toContain('dev:200')
+  })
+
+  it('removes string-prefixed item IDs from collection', async () => {
+    await adapter.addToCollection(DEFAULT_COLLECTION_ID, 'lo:xyz')
+    await adapter.removeFromCollection(DEFAULT_COLLECTION_ID, 'lo:xyz')
+    const col = await adapter.getCollection(DEFAULT_COLLECTION_ID)
+    expect(col!.itemIds).not.toContain('lo:xyz')
+  })
+
+  it('updates collection color via saveCollection', async () => {
+    const col = await adapter.getCollection(DEFAULT_COLLECTION_ID)
+    col!.color = '#3b82f6'
+    await adapter.saveCollection(col!)
+    const updated = await adapter.getCollection(DEFAULT_COLLECTION_ID)
+    expect(updated!.color).toBe('#3b82f6')
+  })
 })

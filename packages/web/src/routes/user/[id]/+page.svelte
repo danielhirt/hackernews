@@ -1,18 +1,23 @@
 <script lang="ts">
   import { page } from '$app/state'
-  import { HnClient, type User, type Story, type Comment as HnComment, DEFAULT_COLLECTION_ID, storyToFeedItem } from '@hackernews/core'
+  import { HnClient, LobstersClient, type User, type LobstersUser, type Story, type Comment as HnComment, DEFAULT_COLLECTION_ID, storyToFeedItem } from '@hackernews/core'
   import { timeAgo } from '$lib/time'
   import { getCollections } from '$lib/collections.svelte'
   import { sortStories, sortComments, filterByPeriod, type SortBy, type FilterPeriod } from '$lib/sort-filter'
   import { PAGE_SIZE, paginateItems, hasMoreItems } from '$lib/pagination'
   import StoryCard from '../../../components/StoryCard.svelte'
 
-  const client = new HnClient()
+  const hnClient = new HnClient()
+  const lobstersClient = new LobstersClient(undefined, '/api/lobsters?path=')
   const cols = getCollections()
 
   let user: User | null = $state(null)
+  let lobstersUser: LobstersUser | null = $state(null)
   let loading = $state(true)
   let error = $state(false)
+
+  let source = $derived(page.url.searchParams.get('source') ?? 'hackernews')
+  let isLobsters = $derived(source === 'lobsters')
 
   type Tab = 'submissions' | 'comments' | 'favorites'
   let activeTab: Tab = $state('submissions')
@@ -53,12 +58,14 @@
   )
 
   $effect(() => {
-    loadUser(userId)
+    loadUser(userId, source)
   })
 
-  async function loadUser(id: string) {
+  async function loadUser(id: string, src: string) {
     loading = true
     error = false
+    user = null
+    lobstersUser = null
     submissions = []
     comments = []
     commentStoryIds = new Map()
@@ -70,11 +77,15 @@
     commentsPage = 1
     favoritesPage = 1
     try {
-      user = await client.fetchUser(id)
-      if (!user) {
-        error = true
+      if (src === 'lobsters') {
+        lobstersUser = await lobstersClient.fetchUser(id)
       } else {
-        await loadTab(activeTab)
+        user = await hnClient.fetchUser(id)
+        if (!user) {
+          error = true
+        } else {
+          await loadTab(activeTab)
+        }
       }
     } catch {
       error = true
@@ -120,7 +131,7 @@
       if (submissions.length >= targetSubmissions && comments.length >= targetComments) break
 
       const chunk = user.submitted.slice(submittedOffset, submittedOffset + CHUNK_SIZE)
-      const results = await Promise.all(chunk.map((id) => client.fetchItem(id)))
+      const results = await Promise.all(chunk.map((id) => hnClient.fetchItem(id)))
       for (const item of results) {
         if (!item) continue
         if ('title' in item) {
@@ -186,7 +197,7 @@
     await Promise.all(unresolved.map(async (comment) => {
       let parentId = comment.parent
       for (let i = 0; i < 20; i++) {
-        const parent = await client.fetchItem(parentId)
+        const parent = await hnClient.fetchItem(parentId)
         if (!parent) break
         if ('title' in parent) {
           results.set(comment.id, parent.id)
@@ -207,7 +218,7 @@
     if (!ids.length || favoritesOffset >= ids.length) return
     const chunk = ids.slice(favoritesOffset, favoritesOffset + PAGE_SIZE)
     const results = await Promise.all(
-      chunk.map((id) => client.fetchItem(id))
+      chunk.map((id) => hnClient.fetchItem(id))
     )
     favorites = [...favorites, ...results.filter(
       (item): item is Story => item !== null && 'title' in item
@@ -222,13 +233,69 @@
       day: 'numeric',
     })
   }
+
+  function formatIsoDate(isoString: string): string {
+    return new Date(isoString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
+  }
 </script>
 
 {#if loading}
   <p class="status">Loading...</p>
-{:else if error || !user}
+{:else if isLobsters && lobstersUser}
+  <div class="profile">
+    <header class="profile-header">
+      <div class="profile-title">
+        {#if lobstersUser.avatar_url}
+          <img class="avatar" src="https://lobste.rs{lobstersUser.avatar_url}" alt="{lobstersUser.username}" />
+        {/if}
+        <h1 class="username">{lobstersUser.username}</h1>
+        {#if lobstersUser.is_admin}
+          <span class="badge">admin</span>
+        {:else if lobstersUser.is_moderator}
+          <span class="badge">mod</span>
+        {/if}
+      </div>
+      <div class="stats">
+        <span>Joined {formatIsoDate(lobstersUser.created_at)}</span>
+        <span class="sep">|</span>
+        <span>{timeAgo(Math.floor(new Date(lobstersUser.created_at).getTime() / 1000))}</span>
+        {#if lobstersUser.invited_by_user}
+          <span class="sep">|</span>
+          <span>Invited by <a href="/user/{lobstersUser.invited_by_user}?source=lobsters" class="user-link">{lobstersUser.invited_by_user}</a></span>
+        {/if}
+      </div>
+      {#if lobstersUser.github_username || lobstersUser.mastodon_username}
+        <div class="stats">
+          {#if lobstersUser.github_username}
+            <a href="https://github.com/{lobstersUser.github_username}" target="_blank" rel="noopener" class="user-link">GitHub</a>
+          {/if}
+          {#if lobstersUser.github_username && lobstersUser.mastodon_username}
+            <span class="sep">|</span>
+          {/if}
+          {#if lobstersUser.mastodon_username}
+            <span class="social-link">Mastodon: {lobstersUser.mastodon_username}</span>
+          {/if}
+        </div>
+      {/if}
+    </header>
+
+    {#if lobstersUser.about}
+      <section class="about">
+        <div class="about-content">{@html lobstersUser.about}</div>
+      </section>
+    {/if}
+
+    <div class="external-link">
+      <a href="https://lobste.rs/~{lobstersUser.username}" target="_blank" rel="noopener" class="user-link">View on Lobsters ↗</a>
+    </div>
+  </div>
+{:else if error || (!user && !lobstersUser)}
   <p class="status">User not found.</p>
-{:else}
+{:else if user}
   <div class="profile">
     <header class="profile-header">
       <h1 class="username">{user.id}</h1>
@@ -347,10 +414,47 @@
     border-bottom: 1px solid var(--color-border);
   }
 
+  .profile-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+
+  .avatar {
+    width: 32px;
+    height: 32px;
+  }
+
+  .badge {
+    font-size: 0.7rem;
+    color: var(--color-text-faint);
+    border: 1px solid var(--color-border);
+    padding: 1px 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
   .username {
     font-size: 1.1rem;
     font-weight: 600;
-    margin-bottom: 4px;
+  }
+
+  .user-link {
+    color: var(--color-accent);
+    text-decoration: none;
+  }
+
+  .user-link:hover {
+    text-decoration: underline;
+  }
+
+  .social-link {
+    color: var(--color-text-muted);
+  }
+
+  .external-link {
+    font-size: 0.8rem;
   }
 
   .stats {
@@ -373,7 +477,7 @@
   }
 
   .about-content :global(a) {
-    color: var(--color-link);
+    color: var(--color-accent);
     text-decoration: underline;
   }
 
@@ -467,7 +571,7 @@
   }
 
   .comment-text :global(a) {
-    color: var(--color-link);
+    color: var(--color-accent);
     text-decoration: underline;
   }
 

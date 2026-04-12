@@ -25,6 +25,23 @@
   <h1>Settings</h1>
 
   <section class="setting-group">
+    <h2>AI Summary Model</h2>
+    <p class="setting-description">Select the Claude model used for AI summaries.</p>
+    <div class="model-options">
+      {#each models as model}
+        <button
+          class="model-option"
+          class:active={settings.value.model === model.value}
+          onclick={() => updateSettings({ model: model.value })}
+        >
+          <span class="model-label">{model.label}</span>
+          <span class="model-desc">{model.description}</span>
+        </button>
+      {/each}
+    </div>
+  </section>
+
+  <section class="setting-group">
     <h2>Accent Color</h2>
     <p class="setting-description">Applies to links, active states, and interactive elements.</p>
     <div class="accent-options">
@@ -45,23 +62,6 @@
         />
         <span class="custom-label">Custom</span>
       </label>
-    </div>
-  </section>
-
-  <section class="setting-group">
-    <h2>AI Summary Model</h2>
-    <p class="setting-description">Select the Claude model used for AI summaries.</p>
-    <div class="model-options">
-      {#each models as model}
-        <button
-          class="model-option"
-          class:active={settings.value.model === model.value}
-          onclick={() => updateSettings({ model: model.value })}
-        >
-          <span class="model-label">{model.label}</span>
-          <span class="model-desc">{model.description}</span>
-        </button>
-      {/each}
     </div>
   </section>
 </div>
