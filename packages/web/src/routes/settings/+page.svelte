@@ -64,6 +64,19 @@
       </label>
     </div>
   </section>
+
+  <section class="setting-group">
+    <h2>Keyboard Navigation</h2>
+    <p class="setting-description">Use j/k to navigate stories, o to open, c for comments, s to save, 1-6 to switch feeds, / to search, r to refresh.</p>
+    <label class="toggle-label">
+      <input
+        type="checkbox"
+        checked={settings.value.keyboardNav}
+        onchange={(e) => updateSettings({ keyboardNav: (e.target as HTMLInputElement).checked })}
+      />
+      Enable keyboard shortcuts
+    </label>
+  </section>
 </div>
 
 <style>
@@ -183,5 +196,18 @@
   .model-desc {
     font-size: 0.75rem;
     color: var(--color-text-muted);
+  }
+
+  .toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: var(--color-text);
+    cursor: pointer;
+  }
+
+  .toggle-label input[type="checkbox"] {
+    accent-color: var(--color-accent);
   }
 </style>

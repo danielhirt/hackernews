@@ -9,7 +9,7 @@
   import { timeAgo, domainFrom } from '$lib/time'
   import CommentTree from '../../../components/CommentTree.svelte'
   import SaveButton from '../../../components/SaveButton.svelte'
-  import { setRefreshHandler } from '$lib/feed.svelte'
+  import { setRefreshHandler, getFeedState } from '$lib/feed.svelte'
   import { marked } from 'marked'
   import { getSummary, saveSummary, clearSummary, isExpanded, setExpanded } from '$lib/summaries.svelte'
   import { getSettings } from '$lib/settings.svelte'
@@ -18,6 +18,7 @@
   const hnClient = new HnClient()
   const lobstersClient = new LobstersClient(undefined, '/api/lobsters?path=')
   const devtoClient = new DevtoClient()
+  const feed = getFeedState()
 
   let rawId = $derived(page.params.id ?? '')
   let parsed = $derived(parseItemId(rawId))
@@ -314,7 +315,7 @@
 {:else if flagged}
   <p class="flagged">This item has been flagged or removed.</p>
 {:else}
-  <a href="/?source={source}" class="back-link">← Back</a>
+  <a href="/?source={source}&feed={feed.feedId}" class="back-link">← Back</a>
   <header class="story-header">
     <div class="story-text">
       <h1 class="story-title">

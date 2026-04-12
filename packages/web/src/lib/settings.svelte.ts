@@ -7,11 +7,13 @@ export type ModelOption = 'haiku' | 'sonnet' | 'opus'
 export interface Settings {
   model: ModelOption
   accentColor: string
+  keyboardNav: boolean
 }
 
 const DEFAULT_SETTINGS: Settings = {
   model: 'sonnet',
   accentColor: '#ff6600',
+  keyboardNav: false,
 }
 
 let settings = $state<Settings>({ ...DEFAULT_SETTINGS })

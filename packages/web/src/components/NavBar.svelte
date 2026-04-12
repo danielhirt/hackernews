@@ -23,7 +23,7 @@
     return feed.source
   })
   let currentFeed = $derived(
-    new URLSearchParams(page.url.search).get('feed') ?? SOURCES.find(s => s.id === currentSource)?.feeds[0]?.id ?? 'top'
+    new URLSearchParams(page.url.search).get('feed') ?? feed.feedId
   )
   let sourceConfig = $derived(SOURCES.find(s => s.id === currentSource) ?? SOURCES[0])
 </script>
@@ -69,9 +69,6 @@
     {/each}
   </div>
   <div class="nav-links">
-    {#if currentSource === SOURCE_ID.HN}
-      <a href="/search" class="nav-link" title="Search HN (/)">Search</a>
-    {/if}
     <a href="/collections" class="nav-link">Collections</a>
     <span class="nav-divider">|</span>
     <button class="icon-btn" onclick={refreshFeed} title="Refresh feed (r)">↻</button>

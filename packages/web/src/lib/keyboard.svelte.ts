@@ -1,6 +1,7 @@
 import { goto } from '$app/navigation'
 import { SOURCES, SOURCE_ID, SOURCE_PREFIX } from '@omnifeed/core'
 import { refreshFeed, getFeedState } from '$lib/feed.svelte'
+import { getSettings } from '$lib/settings.svelte'
 
 interface KeyboardState {
   selectedIndex: number
@@ -29,6 +30,8 @@ export function setEnabled(enabled: boolean) {
 
 export function handleKeydown(e: KeyboardEvent) {
   if (!state.enabled) return
+  const settings = getSettings()
+  if (!settings.value.keyboardNav) return
   const target = e.target as HTMLElement
   if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return
 
@@ -90,7 +93,9 @@ export function handleKeydown(e: KeyboardEvent) {
     case '/':
       if (feed.source === SOURCE_ID.HN) {
         e.preventDefault()
-        goto('/search')
+        // Focus inline search on the feed page
+        const searchInput = document.querySelector('.search-input') as HTMLInputElement
+        searchInput?.focus()
       }
       break
   }

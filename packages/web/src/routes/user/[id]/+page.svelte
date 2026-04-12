@@ -247,6 +247,7 @@
   <p class="status">Loading...</p>
 {:else if isLobsters && lobstersUser}
   <div class="profile">
+    <button class="back-link" onclick={() => history.back()}>← Back</button>
     <header class="profile-header">
       <div class="profile-title">
         {#if lobstersUser.avatar_url}
@@ -297,6 +298,7 @@
   <p class="status">User not found.</p>
 {:else if user}
   <div class="profile">
+    <button class="back-link" onclick={() => history.back()}>← Back</button>
     <header class="profile-header">
       <h1 class="username">{user.id}</h1>
       <div class="stats">
@@ -401,6 +403,18 @@
   .status {
     color: var(--color-text-muted);
     padding: 16px 0;
+  }
+
+  .back-link {
+    align-self: flex-start;
+    font-size: 0.8rem;
+    color: var(--color-text-faint);
+    text-decoration: none;
+    margin-bottom: -8px;
+  }
+
+  .back-link:hover {
+    color: var(--color-accent);
   }
 
   .profile {

@@ -6,6 +6,7 @@
   import { isRead, markRead } from '$lib/read-history.svelte'
   import { getSummary, saveSummary, clearSummary, isExpanded, setExpanded, isOpExpanded, setOpExpanded, isTextOpen, setTextOpen } from '$lib/summaries.svelte'
   import { getSettings } from '$lib/settings.svelte'
+  import { goto } from '$app/navigation'
   import { marked } from 'marked'
 
   let { item, index, selected = false, showSourceBadge = false }: { item: FeedItem; index: number; selected?: boolean; showSourceBadge?: boolean } = $props()
@@ -180,8 +181,8 @@
         <button class="author" onclick={(e: MouseEvent) => {
           e.preventDefault()
           e.stopPropagation()
-          if (isHn) window.location.href = `/user/${item.author}`
-          else if (item.source === SOURCE_ID.LOBSTERS) window.location.href = `/user/${item.author}?source=lobsters`
+          if (isHn) goto(`/user/${item.author}`)
+          else if (item.source === SOURCE_ID.LOBSTERS) goto(`/user/${item.author}?source=lobsters`)
         }}>
           {item.author}
         </button>
@@ -507,6 +508,10 @@
   .ai-toggle.active {
     color: var(--color-accent);
     opacity: 1;
+  }
+
+  .ai-toggle:not(.active):not(:disabled):hover {
+    animation: spin 1.5s linear infinite;
   }
 
   .ai-toggle:disabled {

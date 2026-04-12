@@ -57,4 +57,3 @@ Component tests use `@testing-library/svelte` with jsdom. The vite config needs 
 - Unicode icons for actions: `▸/▾` (expand/collapse), `✦` (AI), `○/●` (save), `↗` (external link)
 - Faint → muted → accent color progression for interactive element states
 - Custom thin scrollbars matching theme via `scrollbar-width: thin` + `::-webkit-scrollbar`
-- Pre-existing TS errors in `+server.ts` (missing `@types/node`) and some route files — not blockers
