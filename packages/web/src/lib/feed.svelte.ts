@@ -216,10 +216,15 @@ export async function loadMore() {
       entry.exhausted = true
     } else {
       entry.currentPage++
-      const sortFn = omnifeedMode === 'hottest'
-        ? (a: FeedItem, b: FeedItem) => b.score - a.score
-        : (a: FeedItem, b: FeedItem) => b.timestamp - a.timestamp
-      entry.items = [...entry.items, ...newItems].sort(sortFn)
+      if (omnifeedMode === 'hottest') {
+        // Score-sorted: new page items may outscore existing ones, merge-insert
+        const merged = [...entry.items, ...newItems]
+        merged.sort((a, b) => b.score - a.score)
+        entry.items = merged
+      } else {
+        // Chronological: new pages are older, append directly
+        entry.items = [...entry.items, ...newItems]
+      }
       items = entry.items
     }
 
