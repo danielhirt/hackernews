@@ -14,6 +14,7 @@
   import { getSummary, saveSummary, clearSummary, isExpanded, setExpanded } from '$lib/summaries.svelte'
   import { getSettings } from '$lib/settings.svelte'
   import { sortCommentTree, type CommentSortMode } from '$lib/sort-filter'
+  import { sanitizeHtml } from '$lib/sanitize'
 
   const hnClient = new HnClient()
   const lobstersClient = new LobstersClient(undefined, '/api/lobsters?path=')
@@ -315,7 +316,7 @@
 {:else if flagged}
   <p class="flagged">This item has been flagged or removed.</p>
 {:else}
-  <a href="/?source={source}&feed={feed.feedId}" class="back-link">← Back</a>
+  <button class="back-link" onclick={() => history.back()}>← Back</button>
   <header class="story-header">
     <div class="story-text">
       <h1 class="story-title">
@@ -329,6 +330,10 @@
         {score} points |
         {#if isHn}
           <a href="/user/{author}" class="author">{author}</a>
+        {:else if source === SOURCE_ID.LOBSTERS}
+          <a href="/user/{author}?source=lobsters" class="author">{author}</a>
+        {:else if source === SOURCE_ID.DEVTO}
+          <a href="/user/{author}?source=devto" class="author">{author}</a>
         {:else}
           <span class="author">{author}</span>
         {/if}
@@ -342,6 +347,7 @@
               href="/?source={source}&tag={tag}"
             >{tag}</a>{/each}
         {/if}
+        | <a class="source-link" href={sourceUrl} target="_blank" rel="noopener">View on {sourceConfig?.shortName ?? source} ↗</a>
       </div>
     </div>
     <div class="header-actions">
@@ -355,19 +361,19 @@
 
   {#if hasSummary}
     <div class="summary-panel">
-      <button class="summary-header" onclick={() => { summaryExpanded = !summaryExpanded; setExpanded(itemId, summaryExpanded) }}>
+      <div class="summary-header" role="button" tabindex="0" onclick={() => { summaryExpanded = !summaryExpanded; setExpanded(itemId, summaryExpanded) }} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); summaryExpanded = !summaryExpanded; setExpanded(itemId, summaryExpanded) } }}>
         <span class="summary-label-group">
           <span class="summary-label">AI Summary</span>
           <span class="summary-toggle-icon">{summaryExpanded ? '▾' : '▸'}</span>
         </span>
-        <div class="summary-actions" onclick={(e) => e.stopPropagation()}>
+        <div class="summary-actions">
           {#if summaryText && !summaryLoading}
-            <button class="action-icon" onclick={copySummary} title="Copy">{summaryCopied ? '✓' : '⧉'}</button>
-            <button class="action-icon" onclick={fetchSummary} title="Regenerate">↻</button>
-            <button class="action-icon action-danger" onclick={() => { clearSummary(itemId); summaryText = ''; summaryError = ''; summaryExpanded = false }} title="Dismiss">✕</button>
+            <button class="action-icon" onclick={(e) => { e.stopPropagation(); copySummary() }} title="Copy">{summaryCopied ? '✓' : '⧉'}</button>
+            <button class="action-icon" onclick={(e) => { e.stopPropagation(); fetchSummary() }} title="Regenerate">↻</button>
+            <button class="action-icon action-danger" onclick={(e) => { e.stopPropagation(); clearSummary(itemId); summaryText = ''; summaryError = ''; summaryExpanded = false }} title="Dismiss">✕</button>
           {/if}
         </div>
-      </button>
+      </div>
       {#if summaryLoading}
         <div class="summary-loading">
           <span class="summary-spinner">✦</span>
@@ -378,7 +384,7 @@
           {#if summaryError}
             <p class="summary-error">{summaryError}</p>
           {:else if summaryText}
-            {@html marked(summaryText)}
+            {@html sanitizeHtml(marked(summaryText) as string)}
           {/if}
         </div>
       {/if}
@@ -387,7 +393,7 @@
 
   {#if bodyText}
     <div class="story-body-wrapper">
-      <div class="story-body">{@html bodyText}</div>
+      <div class="story-body">{@html sanitizeHtml(bodyText)}</div>
       <button class="post-copy-btn" onclick={copyPost} title="Copy post text and link">
         {postCopied ? '✓' : '⧉'}
       </button>
@@ -498,6 +504,15 @@
     color: var(--color-accent);
   }
 
+  .source-link {
+    color: var(--color-text-faint);
+    text-decoration: none;
+  }
+
+  .source-link:hover {
+    color: var(--color-accent);
+  }
+
   .story-body-wrapper {
     position: relative;
     padding-bottom: 12px;
@@ -509,7 +524,7 @@
     position: absolute;
     top: 0;
     right: 0;
-    font-size: 1.15rem;
+    font-size: 0.95rem;
     color: var(--color-text-faint);
     opacity: 0;
     transition: opacity 0.15s;
@@ -604,7 +619,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.1rem;
+    font-size: 0.9rem;
     width: 28px;
     height: 28px;
     color: var(--color-text-faint);
@@ -612,6 +627,10 @@
 
   .ai-btn:hover:not(:disabled) {
     color: var(--color-accent);
+  }
+
+  .ai-btn:not(:disabled):hover {
+    animation: spin 1.5s linear infinite;
   }
 
   .ai-btn:disabled {
@@ -632,6 +651,7 @@
     align-items: center;
     width: 100%;
     text-align: left;
+    cursor: pointer;
   }
 
   .summary-label:hover {
@@ -657,9 +677,10 @@
   }
 
   .summary-toggle-icon {
-    font-size: 0.95rem;
+    font-size: 1.1rem;
     color: var(--color-text-muted);
     line-height: 0;
+    margin-top: -2px;
   }
 
   .summary-actions {
@@ -756,7 +777,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.1rem;
+    font-size: 0.9rem;
     width: 28px;
     height: 28px;
     color: var(--color-text-faint);
@@ -784,7 +805,7 @@
     border: 1px solid var(--color-border);
     color: var(--color-text-muted);
     text-decoration: none;
-    margin-left: 4px;
+    vertical-align: middle;
     line-height: 1.4;
   }
 

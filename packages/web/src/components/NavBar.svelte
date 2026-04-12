@@ -33,24 +33,32 @@
 
 <nav class="navbar">
   <div class="source-selector">
-    <a class="source-name" href="/" class:active={isOmnifeed}>Omnifeed</a>
     <button
       class="source-btn"
-      style="color: {sourceConfig.color}"
+      style={isOmnifeed ? '' : `color: ${sourceConfig.color}`}
       onclick={() => showSourceMenu = !showSourceMenu}
     >
-      {sourceConfig.shortName} <span class="arrow">▾</span>
+      {isOmnifeed ? 'Omnifeed' : sourceConfig.shortName} <span class="arrow">▾</span>
     </button>
     {#if showSourceMenu}
       <!-- svelte-ignore a11y_click_events_have_key_events -->
       <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div class="source-backdrop" onclick={() => showSourceMenu = false}></div>
       <div class="source-menu">
+        <a
+          href="/"
+          class="source-option"
+          class:active={isOmnifeed}
+          onclick={() => showSourceMenu = false}
+        >
+          <span class="source-dot" style="background: var(--color-accent)"></span>
+          Omnifeed
+        </a>
         {#each SOURCES as source}
           <a
             href="/?source={source.id}&feed={source.feeds[0].id}"
             class="source-option"
-            class:active={source.id === currentSource}
+            class:active={!isOmnifeed && source.id === currentSource}
             onclick={() => showSourceMenu = false}
           >
             <span class="source-dot" style="background: {source.color}"></span>
@@ -60,8 +68,8 @@
       </div>
     {/if}
   </div>
-  {#if !isOmnifeed}
-    <div class="feed-tabs">
+  <div class="feed-tabs">
+    {#if !isOmnifeed}
       {#each sourceConfig.feeds as f, i}
         <a
           href="/?source={currentSource}&feed={f.id}"
@@ -72,8 +80,8 @@
           {f.label}
         </a>
       {/each}
-    </div>
-  {/if}
+    {/if}
+  </div>
   <div class="nav-links">
     <a href="/collections" class="nav-link">Collections</a>
     <span class="nav-divider">|</span>
@@ -97,22 +105,6 @@
 
   .source-selector {
     position: relative;
-  }
-
-  .source-name {
-    font-size: 0.8rem;
-    color: var(--color-text-faint);
-    text-decoration: none;
-    margin-bottom: 2px;
-    display: block;
-  }
-
-  .source-name:hover {
-    color: var(--color-text);
-  }
-
-  .source-name.active {
-    color: var(--color-accent);
   }
 
   .source-btn {
