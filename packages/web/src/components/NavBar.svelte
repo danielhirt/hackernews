@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { SOURCES, SOURCE_ID, parseItemId, type ContentSource } from '@omnifeed/core'
+  import { SOURCES, parseItemId, type ContentSource } from '@omnifeed/core'
   import { page } from '$app/state'
-  import { refreshFeed, getFeedState } from '$lib/feed.svelte'
+  import { getFeedState } from '$lib/feed.svelte'
   import { getTheme, toggleTheme } from '$lib/theme.svelte'
 
   const theme = getTheme()
@@ -26,10 +26,14 @@
     new URLSearchParams(page.url.search).get('feed') ?? feed.feedId
   )
   let sourceConfig = $derived(SOURCES.find(s => s.id === currentSource) ?? SOURCES[0])
+  let isOmnifeed = $derived(
+    page.url.pathname === '/' && !new URLSearchParams(page.url.search).has('source')
+  )
 </script>
 
 <nav class="navbar">
   <div class="source-selector">
+    <a class="source-name" href="/" class:active={isOmnifeed}>Omnifeed</a>
     <button
       class="source-btn"
       style="color: {sourceConfig.color}"
@@ -56,22 +60,23 @@
       </div>
     {/if}
   </div>
-  <div class="feed-tabs">
-    {#each sourceConfig.feeds as feed, i}
-      <a
-        href="/?source={currentSource}&feed={feed.id}"
-        class="tab"
-        class:active={currentFeed === feed.id}
-        title="{String(i + 1)}"
-      >
-        {feed.label}
-      </a>
-    {/each}
-  </div>
+  {#if !isOmnifeed}
+    <div class="feed-tabs">
+      {#each sourceConfig.feeds as f, i}
+        <a
+          href="/?source={currentSource}&feed={f.id}"
+          class="tab"
+          class:active={!feed.tag && currentFeed === f.id}
+          title="{String(i + 1)}"
+        >
+          {f.label}
+        </a>
+      {/each}
+    </div>
+  {/if}
   <div class="nav-links">
     <a href="/collections" class="nav-link">Collections</a>
     <span class="nav-divider">|</span>
-    <button class="icon-btn" onclick={refreshFeed} title="Refresh feed (r)">↻</button>
     <button class="icon-btn" onclick={toggleTheme} title="Toggle theme">
       {theme.value === 'dark' ? '☀' : '☾'}
     </button>
@@ -92,6 +97,22 @@
 
   .source-selector {
     position: relative;
+  }
+
+  .source-name {
+    font-size: 0.8rem;
+    color: var(--color-text-faint);
+    text-decoration: none;
+    margin-bottom: 2px;
+    display: block;
+  }
+
+  .source-name:hover {
+    color: var(--color-text);
+  }
+
+  .source-name.active {
+    color: var(--color-accent);
   }
 
   .source-btn {
