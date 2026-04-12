@@ -14,7 +14,7 @@
 
   let showCreate = $state(false)
   let newName = $state('')
-  let newColor = $state(COLLECTION_COLORS[0])
+  let newColor: string = $state(COLLECTION_COLORS[0])
   let editingId: string | null = $state(null)
   let editName = $state('')
   let confirmDeleteId: string | null = $state(null)

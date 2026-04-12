@@ -146,7 +146,7 @@
   }
 
   async function handleRemove(itemId: string) {
-    await removeFromCollection(collectionId, itemId)
+    await removeFromCollection(collectionId!, itemId)
   }
 </script>
 

@@ -180,7 +180,7 @@ function runClaude(prompt: string, model = 'sonnet'): Promise<string> {
       reject(new Error(stderr.trim() || 'No summary text in response'))
     })
 
-    proc.on('error', (err) => {
+    proc.on('error', (err: Error) => {
       clearTimeout(timer)
       if (!settled) {
         settled = true

@@ -3,11 +3,13 @@ import { browser } from '$app/environment'
 const STORAGE_KEY = 'hn-summaries'
 const EXPANDED_KEY = 'hn-summaries-expanded'
 const OP_EXPANDED_KEY = 'hn-op-expanded'
+const TEXT_OPEN_KEY = 'hn-text-open'
 const MAX_ENTRIES = 100
 
 let entries = $state<Map<string, string>>(new Map())
 let expandedState = $state<Map<string, boolean>>(new Map())
 let opExpandedState = $state<Map<string, boolean>>(new Map())
+let textOpenState = $state<Map<string, boolean>>(new Map())
 let loaded = false
 
 function ensureLoaded() {
@@ -45,6 +47,14 @@ function ensureLoaded() {
       // ignore corrupt data
     }
   }
+  const rawTextOpen = localStorage.getItem(TEXT_OPEN_KEY)
+  if (rawTextOpen) {
+    try {
+      textOpenState = new Map(JSON.parse(rawTextOpen) as [string, boolean][])
+    } catch {
+      // ignore corrupt data
+    }
+  }
 }
 
 function persist() {
@@ -63,6 +73,12 @@ function persistOp() {
   // Cap to MAX_ENTRIES most recent
   const arr = [...opExpandedState.entries()].slice(-MAX_ENTRIES)
   localStorage.setItem(OP_EXPANDED_KEY, JSON.stringify(arr))
+}
+
+function persistTextOpen() {
+  if (!browser) return
+  const arr = [...textOpenState.entries()].slice(-MAX_ENTRIES)
+  localStorage.setItem(TEXT_OPEN_KEY, JSON.stringify(arr))
 }
 
 export function getSummary(id: string): string | undefined {
@@ -107,4 +123,20 @@ export function setOpExpanded(id: string, expanded: boolean): void {
   ensureLoaded()
   opExpandedState = new Map([...opExpandedState, [id, expanded]])
   persistOp()
+}
+
+export function isTextOpen(id: string): boolean {
+  ensureLoaded()
+  return textOpenState.get(id) ?? false
+}
+
+export function setTextOpen(id: string, open: boolean): void {
+  ensureLoaded()
+  if (open) {
+    textOpenState = new Map([...textOpenState, [id, open]])
+  } else {
+    textOpenState.delete(id)
+    textOpenState = new Map(textOpenState)
+  }
+  persistTextOpen()
 }

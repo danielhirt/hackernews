@@ -32,16 +32,16 @@ describe('IdbStorageAdapter', () => {
   })
 
   it('adds item to collection', async () => {
-    await adapter.addToCollection(DEFAULT_COLLECTION_ID, 123)
+    await adapter.addToCollection(DEFAULT_COLLECTION_ID, '123')
     const col = await adapter.getCollection(DEFAULT_COLLECTION_ID)
-    expect(col!.itemIds).toContain(123)
+    expect(col!.itemIds).toContain('123')
   })
 
   it('removes item from collection', async () => {
-    await adapter.addToCollection(DEFAULT_COLLECTION_ID, 123)
-    await adapter.removeFromCollection(DEFAULT_COLLECTION_ID, 123)
+    await adapter.addToCollection(DEFAULT_COLLECTION_ID, '123')
+    await adapter.removeFromCollection(DEFAULT_COLLECTION_ID, '123')
     const col = await adapter.getCollection(DEFAULT_COLLECTION_ID)
-    expect(col!.itemIds).not.toContain(123)
+    expect(col!.itemIds).not.toContain('123')
   })
 
   it('deletes a collection', async () => {
@@ -58,7 +58,7 @@ describe('IdbStorageAdapter', () => {
   })
 
   it('finds collections containing an item', async () => {
-    await adapter.addToCollection(DEFAULT_COLLECTION_ID, 42)
+    await adapter.addToCollection(DEFAULT_COLLECTION_ID, '42')
     await adapter.saveCollection({
       id: 'other',
       name: 'Other',
@@ -67,8 +67,8 @@ describe('IdbStorageAdapter', () => {
       createdAt: Date.now(),
       updatedAt: Date.now(),
     })
-    await adapter.addToCollection('other', 42)
-    const cols = await adapter.getCollectionsForItem(42)
+    await adapter.addToCollection('other', '42')
+    const cols = await adapter.getCollectionsForItem('42')
     expect(cols).toHaveLength(2)
   })
 

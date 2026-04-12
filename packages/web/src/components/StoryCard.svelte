@@ -4,7 +4,7 @@
   import { timeAgo, domainFrom } from '$lib/time'
   import SaveButton from './SaveButton.svelte'
   import { isRead, markRead } from '$lib/read-history.svelte'
-  import { getSummary, saveSummary, clearSummary, isExpanded, setExpanded, isOpExpanded, setOpExpanded } from '$lib/summaries.svelte'
+  import { getSummary, saveSummary, clearSummary, isExpanded, setExpanded, isOpExpanded, setOpExpanded, isTextOpen, setTextOpen } from '$lib/summaries.svelte'
   import { getSettings } from '$lib/settings.svelte'
   import { marked } from 'marked'
 
@@ -18,6 +18,10 @@
   let textOpen = $state(false)
   let opExpanded = $state(true)
   let textExpanded = $state(false)
+
+  $effect(() => {
+    textOpen = isTextOpen(item.id)
+  })
 
   $effect(() => {
     if (item.text) {
@@ -39,7 +43,6 @@
     const cached = getSummary(item.id)
     if (cached) {
       summaryText = cached
-      textOpen = true
       summaryExpanded = isExpanded(item.id)
     }
   })
@@ -48,6 +51,7 @@
     e.preventDefault()
     e.stopPropagation()
     textOpen = true
+    setTextOpen(item.id, true)
     if (summaryText && !summaryLoading) {
       summaryExpanded = true
       setExpanded(item.id, true)
@@ -195,7 +199,7 @@
         class:has-text={!!item.text}
         class:active={textOpen}
         title={item.text ? 'Show post text' : 'No post content'}
-        onclick={(e: MouseEvent) => { e.preventDefault(); e.stopPropagation(); textOpen = !textOpen; if (!textOpen) { textExpanded = false; opExpanded = true } }}
+        onclick={(e: MouseEvent) => { e.preventDefault(); e.stopPropagation(); textOpen = !textOpen; setTextOpen(item.id, textOpen); if (!textOpen) { textExpanded = false; opExpanded = true } }}
       >{textOpen ? '▾' : '▸'}</button>
       <button
         class="ai-toggle"

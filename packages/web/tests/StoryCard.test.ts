@@ -3,11 +3,13 @@ import { render, fireEvent } from '@testing-library/svelte'
 import StoryCard from '../src/components/StoryCard.svelte'
 import type { FeedItem } from '@omnifeed/core'
 
-const mockGetSummary = vi.fn(() => undefined as string | undefined)
-const mockSaveSummary = vi.fn()
-const mockClearSummary = vi.fn()
-const mockSetExpanded = vi.fn()
-const mockIsExpanded = vi.fn(() => false)
+const mockGetSummary = vi.fn((_id: string) => undefined as string | undefined)
+const mockSaveSummary = vi.fn((_id: string, _text: string) => {})
+const mockClearSummary = vi.fn((_id: string) => {})
+const mockSetExpanded = vi.fn((_id: string, _expanded: boolean) => {})
+const mockIsExpanded = vi.fn((_id: string) => false)
+const mockIsTextOpen = vi.fn((_id: string) => false)
+const mockSetTextOpen = vi.fn((_id: string, _open: boolean) => {})
 
 vi.mock('$lib/read-history.svelte', () => ({
   isRead: () => false,
@@ -21,13 +23,15 @@ vi.mock('$lib/collections.svelte', () => ({
 }))
 
 vi.mock('$lib/summaries.svelte', () => ({
-  getSummary: (...args: unknown[]) => mockGetSummary(...args),
-  saveSummary: (...args: unknown[]) => mockSaveSummary(...args),
-  clearSummary: (...args: unknown[]) => mockClearSummary(...args),
-  setExpanded: (...args: unknown[]) => mockSetExpanded(...args),
-  isExpanded: (...args: unknown[]) => mockIsExpanded(...args),
+  getSummary: (id: string) => mockGetSummary(id),
+  saveSummary: (id: string, text: string) => mockSaveSummary(id, text),
+  clearSummary: (id: string) => mockClearSummary(id),
+  setExpanded: (id: string, expanded: boolean) => mockSetExpanded(id, expanded),
+  isExpanded: (id: string) => mockIsExpanded(id),
   isOpExpanded: () => true,
   setOpExpanded: vi.fn(),
+  isTextOpen: (id: string) => mockIsTextOpen(id),
+  setTextOpen: (id: string, open: boolean) => mockSetTextOpen(id, open),
 }))
 
 vi.mock('$lib/settings.svelte', () => ({
@@ -325,6 +329,7 @@ describe('StoryCard AI summary', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockGetSummary.mockReturnValue(undefined)
+    mockIsTextOpen.mockReturnValue(false)
     vi.stubGlobal('fetch', vi.fn())
   })
 
@@ -557,6 +562,7 @@ describe('StoryCard AI summary', () => {
   describe('coexistence with OP text', () => {
     it('shows both OP text and summary in the same panel', async () => {
       mockGetSummary.mockReturnValue('summary here')
+      mockIsTextOpen.mockReturnValue(true)
       const { container } = render(StoryCard, {
         props: { item: makeItem({ text: '<p>OP text</p>' }), index: 0 },
       })
@@ -569,6 +575,7 @@ describe('StoryCard AI summary', () => {
 
     it('shows summary section separated from OP text', async () => {
       mockGetSummary.mockReturnValue('summary here')
+      mockIsTextOpen.mockReturnValue(true)
       const { container } = render(StoryCard, {
         props: { item: makeItem({ text: '<p>OP text</p>' }), index: 0 },
       })
@@ -581,6 +588,7 @@ describe('StoryCard AI summary', () => {
 
     it('has divider when both OP text and summary exist', async () => {
       mockGetSummary.mockReturnValue('summary')
+      mockIsTextOpen.mockReturnValue(true)
       const { container } = render(StoryCard, {
         props: { item: makeItem({ text: '<p>text</p>' }), index: 0 },
       })
@@ -739,6 +747,7 @@ describe('StoryCard AI summary', () => {
     it('expands summary without expanding OP text', async () => {
       mockGetSummary.mockReturnValue('cached summary')
       mockIsExpanded.mockReturnValue(false)
+      mockIsTextOpen.mockReturnValue(true)
       const { container } = render(StoryCard, {
         props: { item: makeItem({ text: '<p>OP text</p>' }), index: 0 },
       })
@@ -757,6 +766,7 @@ describe('StoryCard AI summary', () => {
     it('expands OP text without expanding summary', async () => {
       mockGetSummary.mockReturnValue('cached summary')
       mockIsExpanded.mockReturnValue(false)
+      mockIsTextOpen.mockReturnValue(true)
       const { container } = render(StoryCard, {
         props: { item: makeItem({ text: '<p>OP text</p>' }), index: 0 },
       })
@@ -783,12 +793,60 @@ describe('StoryCard AI summary', () => {
       expect(panel).toBeTruthy()
     })
   })
+
+  describe('textOpen persistence', () => {
+    it('calls setTextOpen when toggle is clicked open', async () => {
+      const { container } = render(StoryCard, {
+        props: { item: makeItem({ id: 'hn:99' }), index: 0 },
+      })
+      await fireEvent.click(container.querySelector('.text-toggle')!)
+      expect(mockSetTextOpen).toHaveBeenCalledWith('hn:99', true)
+    })
+
+    it('calls setTextOpen when toggle is clicked closed', async () => {
+      const { container } = render(StoryCard, {
+        props: { item: makeItem({ id: 'hn:99' }), index: 0 },
+      })
+      await fireEvent.click(container.querySelector('.text-toggle')!)
+      mockSetTextOpen.mockClear()
+      await fireEvent.click(container.querySelector('.text-toggle')!)
+      expect(mockSetTextOpen).toHaveBeenCalledWith('hn:99', false)
+    })
+
+    it('restores open panel from persisted state on mount', async () => {
+      mockIsTextOpen.mockReturnValue(true)
+      const { container } = render(StoryCard, {
+        props: { item: makeItem({ text: '<p>OP text</p>' }), index: 0 },
+      })
+      await vi.waitFor(() => {
+        expect(container.querySelector('.text-panel')).toBeTruthy()
+      })
+    })
+
+    it('panel stays closed when persisted state is false', () => {
+      mockIsTextOpen.mockReturnValue(false)
+      const { container } = render(StoryCard, {
+        props: { item: makeItem({ text: '<p>OP text</p>' }), index: 0 },
+      })
+      expect(container.querySelector('.text-panel')).toBeNull()
+    })
+
+    it('calls setTextOpen when AI summary is triggered', async () => {
+      vi.mocked(fetch).mockResolvedValueOnce(new Response('AI text', { status: 200 }))
+      const { container } = render(StoryCard, {
+        props: { item: makeItem({ id: 'hn:77' }), index: 0 },
+      })
+      await fireEvent.click(container.querySelector('.ai-toggle')!)
+      expect(mockSetTextOpen).toHaveBeenCalledWith('hn:77', true)
+    })
+  })
 })
 
 describe('StoryCard multi-source behavior', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockGetSummary.mockReturnValue(undefined)
+    mockIsTextOpen.mockReturnValue(false)
     vi.stubGlobal('fetch', vi.fn())
   })
 

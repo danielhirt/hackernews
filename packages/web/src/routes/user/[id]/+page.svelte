@@ -47,18 +47,18 @@
   let displayedComments = $derived(paginateItems(sortedComments, commentsPage))
   let displayedFavorites = $derived(paginateItems(sortedFavorites, favoritesPage))
 
-  let hasMoreSubmissions = $derived(hasMoreItems(displayedSubmissions, sortedSubmissions, submittedOffset >= (user?.submitted?.length ?? 0)))
-  let hasMoreComments = $derived(hasMoreItems(displayedComments, sortedComments, submittedOffset >= (user?.submitted?.length ?? 0)))
-  let hasMoreFavorites = $derived(hasMoreItems(displayedFavorites, sortedFavorites, favoritesOffset >= (favoritesCollection?.itemIds.length ?? 0)))
-
   let userId = $derived(page.params.id)
 
   let favoritesCollection = $derived(
     cols.value.find((c) => c.id === DEFAULT_COLLECTION_ID)
   )
 
+  let hasMoreSubmissions = $derived(hasMoreItems(displayedSubmissions, sortedSubmissions, submittedOffset >= ((user as User | null)?.submitted?.length ?? 0)))
+  let hasMoreComments = $derived(hasMoreItems(displayedComments, sortedComments, submittedOffset >= ((user as User | null)?.submitted?.length ?? 0)))
+  let hasMoreFavorites = $derived(hasMoreItems(displayedFavorites, sortedFavorites, favoritesOffset >= (favoritesCollection?.itemIds.length ?? 0)))
+
   $effect(() => {
-    loadUser(userId, source)
+    loadUser(userId!, source)
   })
 
   async function loadUser(id: string, src: string) {
@@ -218,7 +218,7 @@
     if (!ids.length || favoritesOffset >= ids.length) return
     const chunk = ids.slice(favoritesOffset, favoritesOffset + PAGE_SIZE)
     const results = await Promise.all(
-      chunk.map((id) => hnClient.fetchItem(id))
+      chunk.map((id) => hnClient.fetchItem(Number(id)))
     )
     favorites = [...favorites, ...results.filter(
       (item): item is Story => item !== null && 'title' in item

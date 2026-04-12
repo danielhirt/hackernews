@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 // Test the summary persistence logic directly with localStorage mock
 const STORAGE_KEY = 'hn-summaries'
 const EXPANDED_KEY = 'hn-summaries-expanded'
+const TEXT_OPEN_KEY = 'hn-text-open'
 const MAX_ENTRIES = 100
 
 // Minimal reimplementation of the persistence logic for testing
@@ -60,6 +61,31 @@ function createSummaryStore(storage: Record<string, string>) {
     },
     getEntryCount(): number {
       return load().size
+    },
+    isTextOpen(id: string): boolean {
+      const raw = storage[TEXT_OPEN_KEY]
+      if (!raw) return false
+      try {
+        const map = new Map(JSON.parse(raw) as [string, boolean][])
+        return map.get(id) ?? false
+      } catch {
+        return false
+      }
+    },
+    setTextOpen(id: string, open: boolean): void {
+      let map: Map<string, boolean>
+      try {
+        map = new Map(JSON.parse(storage[TEXT_OPEN_KEY] || '[]') as [string, boolean][])
+      } catch {
+        map = new Map()
+      }
+      if (open) {
+        map.set(id, true)
+      } else {
+        map.delete(id)
+      }
+      const arr = [...map.entries()].slice(-MAX_ENTRIES)
+      storage[TEXT_OPEN_KEY] = JSON.stringify(arr)
     },
   }
 }
@@ -198,5 +224,48 @@ describe('expanded state persistence', () => {
       const expEntries = JSON.parse(expRaw) as [number, boolean][]
       expect(expEntries.find(([id]) => id === 1)).toBeUndefined()
     }
+  })
+})
+
+describe('textOpen state persistence', () => {
+  let storage: Record<string, string>
+  let store: ReturnType<typeof createSummaryStore>
+
+  beforeEach(() => {
+    storage = {}
+    store = createSummaryStore(storage)
+  })
+
+  it('defaults to closed (false) for unknown IDs', () => {
+    expect(store.isTextOpen('hn:1')).toBe(false)
+  })
+
+  it('persists text-open state', () => {
+    store.setTextOpen('hn:1', true)
+    expect(store.isTextOpen('hn:1')).toBe(true)
+  })
+
+  it('removes entry when closed', () => {
+    store.setTextOpen('hn:1', true)
+    store.setTextOpen('hn:1', false)
+    expect(store.isTextOpen('hn:1')).toBe(false)
+    const raw = JSON.parse(storage[TEXT_OPEN_KEY]) as [string, boolean][]
+    expect(raw.find(([id]) => id === 'hn:1')).toBeUndefined()
+  })
+
+  it('tracks text-open state independently per ID', () => {
+    store.setTextOpen('hn:1', true)
+    store.setTextOpen('hn:2', false)
+    store.setTextOpen('lo:abc', true)
+    expect(store.isTextOpen('hn:1')).toBe(true)
+    expect(store.isTextOpen('hn:2')).toBe(false)
+    expect(store.isTextOpen('lo:abc')).toBe(true)
+  })
+
+  it('survives reload from storage', () => {
+    store.setTextOpen('hn:42', true)
+    // Create a new store instance reading from same storage (simulates reload)
+    const store2 = createSummaryStore(storage)
+    expect(store2.isTextOpen('hn:42')).toBe(true)
   })
 })

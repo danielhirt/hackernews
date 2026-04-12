@@ -10,7 +10,7 @@ interface DevtoArticle {
   positive_reactions_count: number
   comments_count: number
   published_timestamp: string   // ISO string
-  tag_list: string[]
+  tag_list: string[] | string
   cover_image: string | null
   user: { username: string; name: string }
   reading_time_minutes: number

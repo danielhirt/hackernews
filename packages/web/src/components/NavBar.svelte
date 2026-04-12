@@ -62,7 +62,7 @@
         href="/?source={currentSource}&feed={feed.id}"
         class="tab"
         class:active={currentFeed === feed.id}
-        title="{i + 1}"
+        title="{String(i + 1)}"
       >
         {feed.label}
       </a>
