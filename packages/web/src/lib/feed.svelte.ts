@@ -141,6 +141,7 @@ function revalidateFeed(
   feedId: string,
   tag: string | null,
 ): void {
+  // Advance requestId so a subsequent navigation cancels this background fetch
   const myRequest = ++requestId
   const client = getClient(source)
 
@@ -158,6 +159,7 @@ function revalidateFeed(
 }
 
 function revalidateOmnifeed(key: string, mode: OmnifeedMode): void {
+  // Advance requestId so a subsequent navigation cancels this background fetch
   const myRequest = ++requestId
 
   fetchAllSources(mode, 0).then((results) => {
