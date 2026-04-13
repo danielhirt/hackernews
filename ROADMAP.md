@@ -10,6 +10,9 @@ Improve layout and usability on mobile and smaller devices. The current CSS assu
 - Item detail: comment threading indentation breaks on narrow viewports
 - Touch targets: buttons and links need adequate tap area (44px minimum)
 
+### Multi-Source Filter in Omnifeed
+The source filter chips (HN, Lobsters, DEV) currently work as single-select toggles — clicking one filters to that source only, clicking again deselects it back to all. Add multi-select so users can combine sources (e.g., HN + Lobsters without DEV). Active chips stay highlighted, clicking toggles individual sources on/off. When all are deselected, show all sources (same as no filter).
+
 ### Omnifeed Clustering / Ordering
 Improve how items are grouped and ordered in the unified feed, particularly in Newest mode. Current behavior: all items from all sources sorted strictly by timestamp, which means high-volume sources (DEV.to) dominate the feed with low-quality posts while slower sources (Lobsters) sink to the bottom.
 
