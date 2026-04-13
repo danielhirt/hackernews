@@ -40,23 +40,18 @@
     <span class="filter-sep">|</span>
     <button
       class="filter-btn"
-      class:active={sourceFilter === 'all'}
-      onclick={() => sourceFilter = 'all'}
-    >All</button>
-    <button
-      class="filter-btn compact"
       class:active={sourceFilter === 'hackernews'}
-      onclick={() => sourceFilter = 'hackernews'}
+      onclick={() => sourceFilter = sourceFilter === 'hackernews' ? 'all' : 'hackernews'}
     >HN</button>
     <button
       class="filter-btn compact"
       class:active={sourceFilter === 'lobsters'}
-      onclick={() => sourceFilter = 'lobsters'}
+      onclick={() => sourceFilter = sourceFilter === 'lobsters' ? 'all' : 'lobsters'}
     >Lobsters</button>
     <button
       class="filter-btn compact"
       class:active={sourceFilter === 'devto'}
-      onclick={() => sourceFilter = 'devto'}
+      onclick={() => sourceFilter = sourceFilter === 'devto' ? 'all' : 'devto'}
     >DEV</button>
     <span class="filter-sep">|</span>
   {/if}
