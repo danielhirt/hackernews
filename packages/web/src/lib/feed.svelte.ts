@@ -17,6 +17,13 @@ interface FeedCache {
   items: FeedItem[]
   currentPage: number
   exhausted: boolean
+  fetchedAt: number
+}
+
+const FEED_CACHE_TTL = 5 * 60 * 1000
+
+function isCacheStale(entry: FeedCache): boolean {
+  return Date.now() - entry.fetchedAt >= FEED_CACHE_TTL
 }
 
 const clients = new Map<ContentSource, SourceClient>()
@@ -98,6 +105,9 @@ export async function loadFeed(source: ContentSource, feedId: string, tag?: stri
   if (cached) {
     items = cached.items
     loading = false
+    if (isCacheStale(cached)) {
+      revalidateFeed(key, source, feedId, tag ?? null)
+    }
     return
   }
 
@@ -112,7 +122,7 @@ export async function loadFeed(source: ContentSource, feedId: string, tag?: stri
     }
     if (thisRequest !== requestId) return
     items = result
-    cache.set(key, { items: result, currentPage: 0, exhausted: result.length === 0 })
+    cache.set(key, { items: result, currentPage: 0, exhausted: result.length === 0, fetchedAt: Date.now() })
   } catch (err) {
     if (thisRequest !== requestId) return
     console.error(`Failed to load ${source}/${feedId}:`, err)
@@ -125,6 +135,43 @@ function sortForMode(mode: OmnifeedMode): OmnifeedSort {
   return mode === 'hottest' ? 'score' : 'newest'
 }
 
+function revalidateFeed(
+  key: string,
+  source: ContentSource,
+  feedId: string,
+  tag: string | null,
+): void {
+  const myRequest = ++requestId
+  const client = getClient(source)
+
+  const fetchPromise = tag && client.fetchTag
+    ? client.fetchTag(tag, 0)
+    : client.fetchFeed(feedId, 0)
+
+  fetchPromise.then((result) => {
+    if (myRequest !== requestId) return
+    items = result
+    cache.set(key, { items: result, currentPage: 0, exhausted: result.length === 0, fetchedAt: Date.now() })
+  }).catch(() => {
+    // On failure, keep stale data
+  })
+}
+
+function revalidateOmnifeed(key: string, mode: OmnifeedMode): void {
+  const myRequest = ++requestId
+
+  fetchAllSources(mode, 0).then((results) => {
+    if (myRequest !== requestId) return
+    const feedsBySource: Partial<Record<ContentSource, FeedItem[]>> = {}
+    allSourceIds.forEach((id, i) => { feedsBySource[id] = results[i] })
+    const merged = mergeFeeds(feedsBySource, sortForMode(mode))
+    items = merged
+    cache.set(key, { items: merged, currentPage: 0, exhausted: false, fetchedAt: Date.now() })
+  }).catch(() => {
+    // On failure, keep stale data
+  })
+}
+
 export async function loadOmnifeed(mode: OmnifeedMode) {
   const key = `omnifeed:${mode}`
   omnifeedMode = mode
@@ -134,6 +181,9 @@ export async function loadOmnifeed(mode: OmnifeedMode) {
   if (cached) {
     currentKey = key
     items = cached.items
+    if (isCacheStale(cached)) {
+      revalidateOmnifeed(key, mode)
+    }
     return
   }
 
@@ -151,7 +201,7 @@ export async function loadOmnifeed(mode: OmnifeedMode) {
     const merged = mergeFeeds(feedsBySource, sortForMode(mode))
 
     items = merged
-    cache.set(key, { items: merged, currentPage: 0, exhausted: false })
+    cache.set(key, { items: merged, currentPage: 0, exhausted: false, fetchedAt: Date.now() })
   } finally {
     if (myRequestId === requestId) loading = false
   }
@@ -189,7 +239,7 @@ export async function refreshFeed() {
     }
     if (thisRequest !== requestId) return
     items = result
-    cache.set(currentKey, { items: result, currentPage: 0, exhausted: result.length === 0 })
+    cache.set(currentKey, { items: result, currentPage: 0, exhausted: result.length === 0, fetchedAt: Date.now() })
   } catch (err) {
     if (thisRequest !== requestId) return
     console.error('Failed to refresh feed:', err)
