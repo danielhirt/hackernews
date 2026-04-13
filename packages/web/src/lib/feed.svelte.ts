@@ -204,7 +204,8 @@ export async function loadMore() {
 
   if (currentView === 'omnifeed') {
     const results = await fetchAllSources(omnifeedMode, entry.currentPage + 1)
-    const newItems = results.flat()
+    const existingIds = new Set(entry.items.map(i => i.id))
+    const newItems = results.flat().filter(i => !existingIds.has(i.id))
 
     if (newItems.length === 0) {
       entry.exhausted = true

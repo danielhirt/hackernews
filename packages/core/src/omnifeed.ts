@@ -15,7 +15,14 @@ export function mergeFeeds(
   feedsBySource: Partial<Record<ContentSource, FeedItem[]>>,
   sort: OmnifeedSort = 'newest'
 ): FeedItem[] {
-  const items = (Object.values(feedsBySource) as FeedItem[][]).flat()
+  const seen = new Set<string>()
+  const items = (Object.values(feedsBySource) as FeedItem[][])
+    .flat()
+    .filter(item => {
+      if (seen.has(item.id)) return false
+      seen.add(item.id)
+      return true
+    })
   if (sort === 'score') {
     return items.sort((a, b) => b.score - a.score)
   }
