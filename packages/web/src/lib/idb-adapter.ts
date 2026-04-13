@@ -8,7 +8,7 @@ const STORE_NAME = 'collections'
 export class IdbStorageAdapter implements StorageAdapter {
   private db!: IDBPDatabase
 
-  constructor(private dbName: string = 'hn-reader') {}
+  constructor(private dbName: string = 'omnifeed') {}
 
   async init(): Promise<void> {
     this.db = await openDB(this.dbName, DB_VERSION, {

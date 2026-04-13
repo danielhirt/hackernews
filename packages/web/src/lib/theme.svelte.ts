@@ -1,6 +1,6 @@
 import { browser } from '$app/environment'
 
-const STORAGE_KEY = 'hn-theme'
+const STORAGE_KEY = 'omnifeed-theme'
 type Theme = 'dark' | 'light'
 
 let theme = $state<Theme>('dark')

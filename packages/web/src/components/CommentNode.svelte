@@ -1,6 +1,7 @@
 <script lang="ts">
   import { SOURCE_ID, type CommentItem } from '@omnifeed/core'
   import { timeAgo } from '$lib/time'
+  import { sanitizeHtml } from '$lib/sanitize'
   import CommentTree from './CommentTree.svelte'
 
   let {
@@ -17,7 +18,12 @@
     defaultCollapsed?: boolean
   } = $props()
 
-  let collapsed = $state(defaultCollapsed)
+  let collapsed = $state(false)
+
+  $effect(() => {
+    collapsed = defaultCollapsed
+  })
+
   let isFocused = $derived(focusPath.includes(comment.id))
   let isHn = $derived(comment.source === SOURCE_ID.HN)
   let copied = $state(false)
@@ -64,7 +70,7 @@
         {/if}
       </div>
       {#if !collapsed}
-        <div class="comment-body">{@html comment.text}</div>
+        <div class="comment-body">{@html sanitizeHtml(comment.text)}</div>
         {#if comment.children.length}
           <CommentTree
             comments={comment.children}
@@ -161,7 +167,7 @@
 
   .copy-btn {
     color: var(--color-text-faint);
-    font-size: 1.15rem;
+    font-size: 0.95rem;
     padding: 0;
     opacity: 0;
     align-self: center;

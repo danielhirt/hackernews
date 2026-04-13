@@ -93,10 +93,4 @@ export async function removeFromCollection(collectionId: string, itemId: string)
   collections = [...collections]
 }
 
-export async function getCollectionsForItem(itemId: string): Promise<Collection[]> {
-  await ensureInit()
-  if (!adapter) return []
-  return adapter.getCollectionsForItem(itemId)
-}
-
 export { COLLECTION_COLORS }

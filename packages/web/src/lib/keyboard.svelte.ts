@@ -24,10 +24,6 @@ export function getKeyboardState() {
   }
 }
 
-export function setEnabled(enabled: boolean) {
-  state.enabled = enabled
-}
-
 export function handleKeydown(e: KeyboardEvent) {
   if (!state.enabled) return
   const settings = getSettings()
@@ -60,9 +56,9 @@ export function handleKeydown(e: KeyboardEvent) {
       break
     case 'o': {
       e.preventDefault()
-      const card = document.querySelector(`[data-index="${state.selectedIndex}"]`) as HTMLAnchorElement
-      if (card?.href) {
-        const href = card.getAttribute('href')!
+      const card = document.querySelector(`[data-index="${state.selectedIndex}"]`) as HTMLElement | null
+      const href = card?.dataset.href
+      if (href) {
         if (href.startsWith('http')) {
           window.open(href, '_blank', 'noopener')
         } else {
@@ -93,7 +89,6 @@ export function handleKeydown(e: KeyboardEvent) {
     case '/':
       if (feed.source === SOURCE_ID.HN) {
         e.preventDefault()
-        // Focus inline search on the feed page
         const searchInput = document.querySelector('.search-input') as HTMLInputElement
         searchInput?.focus()
       }

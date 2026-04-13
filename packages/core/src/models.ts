@@ -42,6 +42,18 @@ export interface LobstersUser {
   is_moderator: boolean
 }
 
+export interface DevtoUser {
+  username: string
+  name: string
+  summary: string
+  joined_at: string
+  profile_image: string
+  website_url: string | null
+  twitter_username: string | null
+  github_username: string | null
+  location: string | null
+}
+
 export interface Collection {
   id: string
   name: string
@@ -49,12 +61,6 @@ export interface Collection {
   itemIds: string[]
   createdAt: number
   updatedAt: number
-}
-
-export interface SavedItem {
-  itemId: string
-  collectionId: string
-  savedAt: number
 }
 
 export type FeedType = 'top' | 'new' | 'best' | 'ask' | 'show' | 'job'

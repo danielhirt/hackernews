@@ -1,4 +1,4 @@
-import type { Story, Comment, CommentItem } from '@omnifeed/core'
+import type { Story, Comment, CommentItem, FeedItem } from '@omnifeed/core'
 
 export type SortBy = 'newest' | 'oldest' | 'points' | 'discussed'
 export type FilterPeriod = 'all' | 'week' | 'month' | 'year'
@@ -32,6 +32,20 @@ export function sortComments(items: Comment[], sortBy: SortBy): Comment[] {
   const sorted = [...items]
   if (sortBy === 'oldest') return sorted.sort((a, b) => a.time - b.time)
   return sorted.sort((a, b) => b.time - a.time)
+}
+
+export function sortFeedItems(items: FeedItem[], sortBy: SortBy): FeedItem[] {
+  const sorted = [...items]
+  if (sortBy === 'oldest') return sorted.sort((a, b) => a.timestamp - b.timestamp)
+  if (sortBy === 'points') return sorted.sort((a, b) => b.score - a.score)
+  if (sortBy === 'discussed') return sorted.sort((a, b) => b.commentCount - a.commentCount)
+  return sorted.sort((a, b) => b.timestamp - a.timestamp)
+}
+
+export function filterFeedItemsByPeriod(items: FeedItem[], period: FilterPeriod): FeedItem[] {
+  if (period === 'all') return items
+  const cutoff = periodCutoff(period)
+  return items.filter((i) => i.timestamp >= cutoff)
 }
 
 export type CommentSortMode = 'default' | 'newest' | 'oldest'

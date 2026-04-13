@@ -252,7 +252,7 @@ describe('StoryCard text toggle', () => {
       expect(container.querySelector('.text-panel')).toBeNull()
     })
 
-    it('resets expanded state when panel is closed via toggle', async () => {
+    it('preserves expanded state when panel is closed and reopened', async () => {
       const { container } = render(StoryCard, {
         props: { item: makeItem({ text: '<p>Content</p>' }), index: 0 },
       })
@@ -267,10 +267,10 @@ describe('StoryCard text toggle', () => {
       await fireEvent.click(toggleBtn)
       expect(container.querySelector('.text-panel')).toBeNull()
 
-      // Reopen — should be in preview mode, not expanded
+      // Reopen — expanded state should survive
       await fireEvent.click(toggleBtn)
       const content = container.querySelector('.text-content')!
-      expect(content.classList.contains('expanded')).toBe(false)
+      expect(content.classList.contains('expanded')).toBe(true)
     })
 
     it('collapses OP section via header click', async () => {

@@ -103,6 +103,7 @@
             class:selected={newColor === color}
             style="background: {color}"
             onclick={() => (newColor = color)}
+            aria-label="Select color {color}"
           ></button>
         {/each}
         <label class="custom-color">
@@ -118,12 +119,15 @@
 
   <div class="collection-controls">
     <div class="controls-left">
-      <input
-        type="text"
-        class="search-input"
-        placeholder="Search collections..."
-        bind:value={searchQuery}
-      />
+      <span class="search-field">
+        <span class="search-icon">⌕</span>
+        <input
+          type="text"
+          class="search-input"
+          placeholder="Search collections..."
+          bind:value={searchQuery}
+        />
+      </span>
     </div>
     <div class="controls-right">
       <button class="control-btn" class:active={sortMode === 'newest'} onclick={() => sortMode = 'newest'}>Newest</button>
@@ -180,6 +184,7 @@
               class:selected={col.color === color}
               style="background: {color}"
               onclick={() => setCollectionColor(col.id, color)}
+              aria-label="Select color {color}"
             ></button>
           {/each}
           <label class="custom-color">
@@ -344,8 +349,23 @@
     gap: 2px;
   }
 
+  .search-field {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 5px;
+    font-size: 1.2rem;
+    color: var(--color-text-faint);
+    pointer-events: none;
+    line-height: 1;
+  }
+
   .search-input {
-    padding: 3px 8px;
+    padding: 3px 8px 3px 22px;
     background: var(--color-bg);
     color: var(--color-text);
     border: 1px solid var(--color-border);

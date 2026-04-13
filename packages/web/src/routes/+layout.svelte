@@ -36,6 +36,6 @@
   .main {
     max-width: var(--max-width);
     margin: 0 auto;
-    padding: 12px 16px;
+    padding: 12px 16px 80px;
   }
 </style>

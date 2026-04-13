@@ -23,7 +23,7 @@ function stripHtml(html: string): string {
 async function fetchArticleText(url: string, fetchFn: typeof fetch): Promise<string> {
   try {
     const res = await fetchFn(url, {
-      headers: { 'User-Agent': 'HN-Reader-Summarizer/1.0' },
+      headers: { 'User-Agent': 'Omnifeed-Summarizer/1.0' },
       signal: AbortSignal.timeout(10000),
     })
     if (!res.ok) return ''

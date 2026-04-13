@@ -1,5 +1,4 @@
 <script lang="ts">
-  import type { Collection } from '@omnifeed/core'
   import { DEFAULT_COLLECTION_ID } from '@omnifeed/core'
   import {
     getCollections,
@@ -81,7 +80,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     width: 28px;
     height: 28px;
     color: var(--color-text-faint);

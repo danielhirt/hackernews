@@ -7,7 +7,9 @@
   import { getSummary, saveSummary, clearSummary, isExpanded, setExpanded, isOpExpanded, setOpExpanded, isTextOpen, setTextOpen } from '$lib/summaries.svelte'
   import { getSettings } from '$lib/settings.svelte'
   import { goto } from '$app/navigation'
+  import { untrack } from 'svelte'
   import { marked } from 'marked'
+  import { sanitizeHtml } from '$lib/sanitize'
 
   let { item, index, selected = false, showSourceBadge = false }: { item: FeedItem; index: number; selected?: boolean; showSourceBadge?: boolean } = $props()
 
@@ -21,7 +23,7 @@
   let textExpanded = $state(false)
 
   $effect(() => {
-    textOpen = isTextOpen(item.id)
+    textOpen = untrack(() => isTextOpen(item.id))
   })
 
   $effect(() => {
@@ -45,6 +47,11 @@
     if (cached) {
       summaryText = cached
       summaryExpanded = isExpanded(item.id)
+    } else {
+      summaryText = ''
+      summaryError = ''
+      summaryExpanded = false
+      summaryFull = false
     }
   })
 
@@ -132,17 +139,30 @@
 </script>
 
 <div class="story-wrapper">
-  <a
-    href={detailHref}
+  <div
+    role="link"
+    tabindex="0"
     class="story-card"
     class:selected
     class:read
     data-index={index}
-    onclick={(e: MouseEvent) => {
+    data-href={detailHref}
+    onclick={() => {
       markRead(item.id)
       if (!hasDetailPage) {
-        e.preventDefault()
         window.open(detailHref, '_blank', 'noopener')
+      } else {
+        goto(detailHref)
+      }
+    }}
+    onkeydown={(e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        markRead(item.id)
+        if (!hasDetailPage) {
+          window.open(detailHref, '_blank', 'noopener')
+        } else {
+          goto(detailHref)
+        }
       }
     }}
   >
@@ -183,6 +203,7 @@
           e.stopPropagation()
           if (isHn) goto(`/user/${item.author}`)
           else if (item.source === SOURCE_ID.LOBSTERS) goto(`/user/${item.author}?source=lobsters`)
+          else if (item.source === SOURCE_ID.DEVTO) goto(`/user/${item.author}?source=devto`)
         }}>
           {item.author}
         </button>
@@ -192,6 +213,14 @@
           <span class="sep">|</span>
           <span>{item.commentCount}&nbsp;comments</span>
         {/if}
+        <span class="sep">|</span>
+        <a
+          class="source-link"
+          href={item.sourceUrl}
+          target="_blank"
+          rel="noopener"
+          onclick={(e: MouseEvent) => e.stopPropagation()}
+        >View on {SOURCES.find(s => s.id === item.source)?.shortName ?? item.source} ↗</a>
       </div>
     </div>
     <div class="card-actions">
@@ -200,7 +229,7 @@
         class:has-text={!!item.text}
         class:active={textOpen}
         title={item.text ? 'Show post text' : 'No post content'}
-        onclick={(e: MouseEvent) => { e.preventDefault(); e.stopPropagation(); textOpen = !textOpen; setTextOpen(item.id, textOpen); if (!textOpen) { textExpanded = false; opExpanded = true } }}
+        onclick={(e: MouseEvent) => { e.preventDefault(); e.stopPropagation(); textOpen = !textOpen; setTextOpen(item.id, textOpen) }}
       >{textOpen ? '▾' : '▸'}</button>
       <button
         class="ai-toggle"
@@ -221,7 +250,7 @@
         >↗</a>
       {/if}
     </div>
-  </a>
+  </div>
 
   {#if textOpen}
     <div class="text-panel">
@@ -232,7 +261,7 @@
               <span class="section-label">OP Comment</span>
               <span class="summary-toggle-icon">{opExpanded ? '▾' : '▸'}</span>
             </span>
-            <div class="summary-actions" onclick={(e) => e.stopPropagation()}>
+            <div class="summary-actions">
               <button class="action-icon" onclick={copyOpText} title="Copy">
                 {opCopied ? '✓' : '⧉'}
               </button>
@@ -240,7 +269,7 @@
           </div>
           {#if opExpanded}
             <div class="text-content" class:expanded={textExpanded}>
-              {@html item.text}
+              {@html sanitizeHtml(item.text)}
             </div>
             <div class="panel-actions">
               <button class="action-text" onclick={() => textExpanded = !textExpanded}>
@@ -265,7 +294,7 @@
               {/if}
             </span>
             {#if summaryText && !summaryLoading}
-              <div class="summary-actions" onclick={(e) => e.stopPropagation()}>
+              <div class="summary-actions">
                 <button class="action-icon" onclick={copySummary} title="Copy">
                   {summaryCopied ? '✓' : '⧉'}
                 </button>
@@ -279,7 +308,7 @@
               <p class="summary-error">{summaryError}</p>
             {:else if summaryText}
               <div class="summary-content" class:full={summaryFull}>
-                {@html marked(summaryText)}
+                {@html sanitizeHtml(marked(summaryText) as string)}
               </div>
               <div class="panel-actions">
                 <button class="action-text" onclick={() => summaryFull = !summaryFull}>
@@ -306,6 +335,7 @@
     padding: 8px 0;
     text-decoration: none;
     color: inherit;
+    cursor: pointer;
   }
 
   .story-card:hover {
@@ -354,6 +384,16 @@
   }
 
   .domain:hover {
+    color: var(--color-accent);
+  }
+
+  .source-link {
+    font-size: 0.8rem;
+    color: var(--color-text-faint);
+    text-decoration: none;
+  }
+
+  .source-link:hover {
     color: var(--color-accent);
   }
 
@@ -478,12 +518,6 @@
     color: var(--color-accent);
   }
 
-  .action-divider {
-    color: var(--color-border);
-    font-size: 0.75rem;
-    user-select: none;
-  }
-
   .action-icon:hover {
     color: var(--color-accent);
   }
@@ -498,7 +532,7 @@
     justify-content: center;
     width: 28px;
     height: 28px;
-    font-size: 1.1rem;
+    font-size: 0.9rem;
     color: var(--color-text-faint);
     opacity: 0.4;
     transition: opacity 0.15s, color 0.15s;
@@ -612,7 +646,7 @@
     font-size: 1.1rem;
     color: var(--color-text-muted);
     line-height: 0;
-    margin-top: -4px;
+    margin-top: -2px;
   }
 
   .summary-actions {
@@ -648,7 +682,7 @@
     justify-content: center;
     width: 28px;
     height: 28px;
-    font-size: 1.1rem;
+    font-size: 0.9rem;
     color: var(--color-text-faint);
     text-decoration: none;
   }

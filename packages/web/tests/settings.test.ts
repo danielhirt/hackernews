@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 
-const STORAGE_KEY = 'hn-settings'
+const STORAGE_KEY = 'omnifeed-settings'
 
 interface Settings {
   model: string

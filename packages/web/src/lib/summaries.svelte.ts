@@ -1,9 +1,9 @@
 import { browser } from '$app/environment'
 
-const STORAGE_KEY = 'hn-summaries'
-const EXPANDED_KEY = 'hn-summaries-expanded'
-const OP_EXPANDED_KEY = 'hn-op-expanded'
-const TEXT_OPEN_KEY = 'hn-text-open'
+const STORAGE_KEY = 'omnifeed-summaries'
+const EXPANDED_KEY = 'omnifeed-summaries-expanded'
+const OP_EXPANDED_KEY = 'omnifeed-op-expanded'
+const TEXT_OPEN_KEY = 'omnifeed-text-open'
 const MAX_ENTRIES = 100
 
 let entries = $state<Map<string, string>>(new Map())

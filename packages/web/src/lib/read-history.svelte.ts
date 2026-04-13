@@ -1,6 +1,6 @@
 import { browser } from '$app/environment'
 
-const STORAGE_KEY = 'hn-read'
+const STORAGE_KEY = 'omnifeed-read'
 const MAX_ENTRIES = 2000
 
 let readIds = $state<Set<string>>(new Set())

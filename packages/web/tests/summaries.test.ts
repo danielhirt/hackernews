@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 
 // Test the summary persistence logic directly with localStorage mock
-const STORAGE_KEY = 'hn-summaries'
-const EXPANDED_KEY = 'hn-summaries-expanded'
-const TEXT_OPEN_KEY = 'hn-text-open'
+const STORAGE_KEY = 'omnifeed-summaries'
+const EXPANDED_KEY = 'omnifeed-summaries-expanded'
+const TEXT_OPEN_KEY = 'omnifeed-text-open'
 const MAX_ENTRIES = 100
 
 // Minimal reimplementation of the persistence logic for testing

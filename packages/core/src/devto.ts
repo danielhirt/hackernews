@@ -1,4 +1,4 @@
-import type { FeedItem, CommentItem } from './models.js'
+import type { FeedItem, CommentItem, DevtoUser } from './models.js'
 
 type FetchFn = typeof globalThis.fetch
 
@@ -58,6 +58,12 @@ export class DevtoClient {
 
     const raw: DevtoRawComment[] = await res.json()
     return raw.map((c) => buildDevtoCommentTree(c, 0))
+  }
+
+  async fetchUser(username: string): Promise<DevtoUser> {
+    const res = await this.fetch(`${BASE_URL}/users/by_username?url=${encodeURIComponent(username)}`)
+    if (!res.ok) throw new Error(`DEV API error: ${res.status}`)
+    return await res.json() as DevtoUser
   }
 
   async fetchTag(tag: string, page: number): Promise<FeedItem[]> {

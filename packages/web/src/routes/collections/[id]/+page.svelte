@@ -173,12 +173,15 @@
         {/if}
         <span class="count">{collection.itemIds.length}</span>
         {#if !loading && items.length > 0}
-          <input
-            type="text"
-            class="search-input"
-            placeholder="Search..."
-            bind:value={searchQuery}
-          />
+          <span class="search-field">
+            <span class="search-icon">⌕</span>
+            <input
+              type="text"
+              class="search-input"
+              placeholder="Search..."
+              bind:value={searchQuery}
+            />
+          </span>
         {/if}
       </div>
       {#if !loading && items.length > 0}
@@ -294,25 +297,30 @@
     width: 180px;
   }
 
-  .action-btn {
-    font-size: 0.75rem;
-    color: var(--color-text-faint);
-    padding: 2px 6px;
+  .search-field {
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin-left: 4px;
   }
 
-  .action-btn:hover {
-    color: var(--color-text-muted);
+  .search-icon {
+    position: absolute;
+    left: 5px;
+    font-size: 1.2rem;
+    color: var(--color-text-faint);
+    pointer-events: none;
+    line-height: 1;
   }
 
   .search-input {
-    padding: 3px 8px;
+    padding: 3px 8px 3px 22px;
     background: var(--color-bg);
     color: var(--color-text);
     border: 1px solid var(--color-border);
     font-family: inherit;
     font-size: 0.75rem;
     width: 120px;
-    margin-left: 4px;
   }
 
   .search-input::placeholder {

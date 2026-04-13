@@ -1,23 +1,27 @@
 <script lang="ts">
   import { page } from '$app/state'
-  import { HnClient, LobstersClient, type User, type LobstersUser, type Story, type Comment as HnComment, DEFAULT_COLLECTION_ID, storyToFeedItem } from '@omnifeed/core'
+  import { HnClient, LobstersClient, DevtoClient, type User, type LobstersUser, type DevtoUser, type Story, type FeedItem, type Comment as HnComment, DEFAULT_COLLECTION_ID, storyToFeedItem, parseItemId } from '@omnifeed/core'
   import { timeAgo } from '$lib/time'
+  import { sanitizeHtml } from '$lib/sanitize'
   import { getCollections } from '$lib/collections.svelte'
-  import { sortStories, sortComments, filterByPeriod, type SortBy, type FilterPeriod } from '$lib/sort-filter'
+  import { sortStories, sortComments, filterByPeriod, sortFeedItems, filterFeedItemsByPeriod, type SortBy, type FilterPeriod } from '$lib/sort-filter'
   import { PAGE_SIZE, paginateItems, hasMoreItems } from '$lib/pagination'
   import StoryCard from '../../../components/StoryCard.svelte'
 
   const hnClient = new HnClient()
   const lobstersClient = new LobstersClient(undefined, '/api/lobsters?path=')
+  const devtoClient = new DevtoClient()
   const cols = getCollections()
 
   let user: User | null = $state(null)
   let lobstersUser: LobstersUser | null = $state(null)
+  let devtoUser: DevtoUser | null = $state(null)
   let loading = $state(true)
   let error = $state(false)
 
   let source = $derived(page.url.searchParams.get('source') ?? 'hackernews')
   let isLobsters = $derived(source === 'lobsters')
+  let isDevto = $derived(source === 'devto')
 
   type Tab = 'submissions' | 'comments' | 'favorites'
   let activeTab: Tab = $state('submissions')
@@ -25,7 +29,7 @@
   let submissions: Story[] = $state([])
   let comments: HnComment[] = $state([])
   let commentStoryIds = $state<Map<number, number>>(new Map())
-  let favorites: Story[] = $state([])
+  let favorites: FeedItem[] = $state([])
   let tabLoading = $state(false)
   let loadedTabs = $state<Set<Tab>>(new Set())
 
@@ -41,7 +45,7 @@
 
   let sortedSubmissions = $derived(sortStories(filterByPeriod(submissions, filterPeriod), sortBy))
   let sortedComments = $derived(sortComments(filterByPeriod(comments, filterPeriod), sortBy))
-  let sortedFavorites = $derived(sortStories(filterByPeriod(favorites, filterPeriod), sortBy))
+  let sortedFavorites = $derived(sortFeedItems(filterFeedItemsByPeriod(favorites, filterPeriod), sortBy))
 
   let displayedSubmissions = $derived(paginateItems(sortedSubmissions, submissionsPage))
   let displayedComments = $derived(paginateItems(sortedComments, commentsPage))
@@ -53,8 +57,12 @@
     cols.value.find((c) => c.id === DEFAULT_COLLECTION_ID)
   )
 
-  let hasMoreSubmissions = $derived(hasMoreItems(displayedSubmissions, sortedSubmissions, submittedOffset >= ((user as User | null)?.submitted?.length ?? 0)))
-  let hasMoreComments = $derived(hasMoreItems(displayedComments, sortedComments, submittedOffset >= ((user as User | null)?.submitted?.length ?? 0)))
+  let submittedExhausted = $derived.by(() => {
+    const submitted = user?.submitted
+    return !submitted || submittedOffset >= submitted.length
+  })
+  let hasMoreSubmissions = $derived(hasMoreItems(displayedSubmissions, sortedSubmissions, submittedExhausted))
+  let hasMoreComments = $derived(hasMoreItems(displayedComments, sortedComments, submittedExhausted))
   let hasMoreFavorites = $derived(hasMoreItems(displayedFavorites, sortedFavorites, favoritesOffset >= (favoritesCollection?.itemIds.length ?? 0)))
 
   $effect(() => {
@@ -66,6 +74,7 @@
     error = false
     user = null
     lobstersUser = null
+    devtoUser = null
     submissions = []
     comments = []
     commentStoryIds = new Map()
@@ -79,6 +88,8 @@
     try {
       if (src === 'lobsters') {
         lobstersUser = await lobstersClient.fetchUser(id)
+      } else if (src === 'devto') {
+        devtoUser = await devtoClient.fetchUser(id)
       } else {
         user = await hnClient.fetchUser(id)
         if (!user) {
@@ -218,11 +229,26 @@
     if (!ids.length || favoritesOffset >= ids.length) return
     const chunk = ids.slice(favoritesOffset, favoritesOffset + PAGE_SIZE)
     const results = await Promise.all(
-      chunk.map((id) => hnClient.fetchItem(Number(id)))
+      chunk.map(async (prefixedId) => {
+        const parsed = parseItemId(prefixedId)
+        try {
+          if (parsed.source === 'hackernews') {
+            const item = await hnClient.fetchItem(Number(parsed.id))
+            if (item && 'title' in item) return storyToFeedItem(item as Story)
+          } else if (parsed.source === 'lobsters') {
+            const result = await lobstersClient.fetchStory(parsed.id)
+            return result.story
+          } else if (parsed.source === 'devto') {
+            const article = await devtoClient.fetchArticle(Number(parsed.id))
+            return article
+          }
+        } catch {
+          // Skip items that fail to load
+        }
+        return null
+      })
     )
-    favorites = [...favorites, ...results.filter(
-      (item): item is Story => item !== null && 'title' in item
-    )]
+    favorites = [...favorites, ...results.filter((item): item is FeedItem => item !== null)]
     favoritesOffset += PAGE_SIZE
   }
 
@@ -286,7 +312,7 @@
 
     {#if lobstersUser.about}
       <section class="about">
-        <div class="about-content">{@html lobstersUser.about}</div>
+        <div class="about-content">{@html sanitizeHtml(lobstersUser.about)}</div>
       </section>
     {/if}
 
@@ -294,7 +320,53 @@
       <a href="https://lobste.rs/~{lobstersUser.username}" target="_blank" rel="noopener" class="user-link">View on Lobsters ↗</a>
     </div>
   </div>
-{:else if error || (!user && !lobstersUser)}
+{:else if isDevto && devtoUser}
+  <div class="profile">
+    <button class="back-link" onclick={() => history.back()}>← Back</button>
+    <header class="profile-header">
+      <div class="profile-title">
+        {#if devtoUser.profile_image}
+          <img class="avatar" src={devtoUser.profile_image} alt={devtoUser.username} />
+        {/if}
+        <h1 class="username">{devtoUser.name || devtoUser.username}</h1>
+      </div>
+      <div class="stats">
+        <span>@{devtoUser.username}</span>
+        <span class="sep">|</span>
+        <span>Joined {devtoUser.joined_at}</span>
+        {#if devtoUser.location}
+          <span class="sep">|</span>
+          <span>{devtoUser.location}</span>
+        {/if}
+      </div>
+      {#if devtoUser.github_username || devtoUser.twitter_username || devtoUser.website_url}
+        <div class="stats">
+          {#if devtoUser.github_username}
+            <a href="https://github.com/{devtoUser.github_username}" target="_blank" rel="noopener" class="user-link">GitHub</a>
+          {/if}
+          {#if devtoUser.twitter_username}
+            {#if devtoUser.github_username}<span class="sep">|</span>{/if}
+            <a href="https://x.com/{devtoUser.twitter_username}" target="_blank" rel="noopener" class="user-link">X</a>
+          {/if}
+          {#if devtoUser.website_url}
+            {#if devtoUser.github_username || devtoUser.twitter_username}<span class="sep">|</span>{/if}
+            <a href={devtoUser.website_url} target="_blank" rel="noopener" class="user-link">Website</a>
+          {/if}
+        </div>
+      {/if}
+    </header>
+
+    {#if devtoUser.summary}
+      <section class="about">
+        <div class="about-content">{devtoUser.summary}</div>
+      </section>
+    {/if}
+
+    <div class="external-link">
+      <a href="https://dev.to/{devtoUser.username}" target="_blank" rel="noopener" class="user-link">View on DEV ↗</a>
+    </div>
+  </div>
+{:else if error || (!user && !lobstersUser && !devtoUser)}
   <p class="status">User not found.</p>
 {:else if user}
   <div class="profile">
@@ -312,7 +384,7 @@
 
     {#if user.about}
       <section class="about">
-        <div class="about-content">{@html user.about}</div>
+        <div class="about-content">{@html sanitizeHtml(user.about)}</div>
       </section>
     {/if}
 
@@ -369,7 +441,7 @@
         {:else}
           {#each displayedComments as comment (comment.id)}
             <a href="/item/{commentStoryIds.get(comment.id) ?? comment.parent}" class="comment-card">
-              <div class="comment-text">{@html comment.text}</div>
+              <div class="comment-text">{@html sanitizeHtml(comment.text)}</div>
               <div class="comment-meta">
                 {timeAgo(comment.time)}
               </div>
@@ -385,8 +457,8 @@
         {#if displayedFavorites.length === 0}
           <p class="status">No favorites.</p>
         {:else}
-          {#each displayedFavorites as story, i (story.id)}
-            <StoryCard item={storyToFeedItem(story)} index={i} />
+          {#each displayedFavorites as item, i (item.id)}
+            <StoryCard {item} index={i} />
           {/each}
           {#if hasMoreFavorites}
             <div class="sentinel" use:observeSentinel>

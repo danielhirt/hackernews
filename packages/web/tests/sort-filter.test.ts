@@ -1,11 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import type { Story, Comment, CommentItem } from '@omnifeed/core'
+import type { Story, Comment, CommentItem, FeedItem } from '@omnifeed/core'
 import {
   periodCutoff,
   filterByPeriod,
   sortStories,
   sortComments,
   sortCommentTree,
+  sortFeedItems,
+  filterFeedItemsByPeriod,
 } from '../src/lib/sort-filter'
 
 function makeStory(overrides: Partial<Story> & { id: number }): Story {
@@ -364,6 +366,92 @@ describe('sortCommentTree', () => {
       expect(result).toHaveLength(1)
       expect(result[0].children).toEqual([])
     })
+  })
+})
+
+describe('sortFeedItems', () => {
+  function makeFeedItem(overrides: Partial<FeedItem> & { id: string }): FeedItem {
+    return {
+      source: 'hackernews',
+      title: `Item ${overrides.id}`,
+      author: 'user',
+      timestamp: 1000,
+      score: 10,
+      commentCount: 0,
+      sourceUrl: '',
+      originalId: 0,
+      ...overrides,
+    }
+  }
+
+  const items = [
+    makeFeedItem({ id: 'a', timestamp: 300, score: 50, commentCount: 10 }),
+    makeFeedItem({ id: 'b', timestamp: 100, score: 200, commentCount: 5 }),
+    makeFeedItem({ id: 'c', timestamp: 500, score: 10, commentCount: 100 }),
+  ]
+
+  it('sorts newest first by default', () => {
+    expect(sortFeedItems(items, 'newest').map(i => i.id)).toEqual(['c', 'a', 'b'])
+  })
+
+  it('sorts oldest first', () => {
+    expect(sortFeedItems(items, 'oldest').map(i => i.id)).toEqual(['b', 'a', 'c'])
+  })
+
+  it('sorts by points descending', () => {
+    expect(sortFeedItems(items, 'points').map(i => i.id)).toEqual(['b', 'a', 'c'])
+  })
+
+  it('sorts by most discussed descending', () => {
+    expect(sortFeedItems(items, 'discussed').map(i => i.id)).toEqual(['c', 'a', 'b'])
+  })
+
+  it('does not mutate original array', () => {
+    const original = items.map(i => i.id)
+    sortFeedItems(items, 'newest')
+    expect(items.map(i => i.id)).toEqual(original)
+  })
+
+  it('handles empty array', () => {
+    expect(sortFeedItems([], 'newest')).toEqual([])
+  })
+})
+
+describe('filterFeedItemsByPeriod', () => {
+  function makeFeedItem(overrides: Partial<FeedItem> & { id: string }): FeedItem {
+    return {
+      source: 'hackernews',
+      title: `Item ${overrides.id}`,
+      author: 'user',
+      timestamp: 1000,
+      score: 10,
+      commentCount: 0,
+      sourceUrl: '',
+      originalId: 0,
+      ...overrides,
+    }
+  }
+
+  it('returns all items for "all"', () => {
+    const items = [makeFeedItem({ id: 'a', timestamp: 100 })]
+    expect(filterFeedItemsByPeriod(items, 'all')).toHaveLength(1)
+  })
+
+  it('filters by week cutoff', () => {
+    const now = Math.floor(Date.now() / 1000)
+    const items = [
+      makeFeedItem({ id: 'recent', timestamp: now - 86400 }),
+      makeFeedItem({ id: 'old', timestamp: now - 30 * 86400 }),
+    ]
+    const result = filterFeedItemsByPeriod(items, 'week')
+    expect(result.map(i => i.id)).toEqual(['recent'])
+  })
+
+  it('does not mutate original array', () => {
+    const items = [makeFeedItem({ id: 'a', timestamp: 100 })]
+    const original = [...items]
+    filterFeedItemsByPeriod(items, 'week')
+    expect(items).toEqual(original)
   })
 })
 
