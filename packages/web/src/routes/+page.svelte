@@ -74,6 +74,29 @@
   let searchPage = $state(0)
   let searchSortByDate = $state(false)
 
+  // Track page height before loadMore so we can auto-scroll when items arrive
+  let heightBeforeLoad = 0
+  let wasLoadingMore = false
+  $effect(() => {
+    if (feed.loadingMore) {
+      wasLoadingMore = true
+    } else if (wasLoadingMore) {
+      wasLoadingMore = false
+      // Items just loaded — nudge scroll so user can continue scrolling down
+      if (heightBeforeLoad > 0) {
+        requestAnimationFrame(() => {
+          const currentScroll = window.scrollY
+          const viewportBottom = currentScroll + window.innerHeight
+          const oldBottom = heightBeforeLoad
+          if (viewportBottom >= oldBottom - 100) {
+            window.scrollBy(0, 1)
+          }
+          heightBeforeLoad = 0
+        })
+      }
+    }
+  })
+
   $effect(() => {
     if (isOmnifeed) {
       loadOmnifeed(omnifeedMode)
@@ -157,6 +180,7 @@
     if (searchActive) return
     const nearBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 500
     if (nearBottom && !feed.loading && !feed.loadingMore) {
+      heightBeforeLoad = document.body.scrollHeight
       loadMore()
     }
   }}

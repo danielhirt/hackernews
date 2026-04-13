@@ -4,6 +4,17 @@
 
   const feed = getFeedState()
   let visible = $state(false)
+  let showLoading = $state(false)
+  let hideTimer: ReturnType<typeof setTimeout> | null = null
+
+  $effect(() => {
+    if (feed.loadingMore) {
+      if (hideTimer) { clearTimeout(hideTimer); hideTimer = null }
+      showLoading = true
+    } else if (showLoading) {
+      hideTimer = setTimeout(() => { showLoading = false; hideTimer = null }, 600)
+    }
+  })
 
   function onScroll() {
     visible = window.scrollY > SCROLL_TO_TOP_THRESHOLD
@@ -17,7 +28,7 @@
 <svelte:window onscroll={onScroll} />
 
 <div class="scroll-controls">
-  {#if feed.loadingMore}
+  {#if showLoading}
     <span class="loading-pill" aria-label="Loading more items">
       <span class="spinner"></span>
       Loading
