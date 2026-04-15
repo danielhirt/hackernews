@@ -102,6 +102,8 @@ function buildPrompt(data: {
 
   return `Use the /notetaker skill to write the following note to my Obsidian vault. The note title should be "${data.title}". Add relevant tags including: ${tagList}. Author: ${data.author}.
 
+Default location: 008 Resources/Omnifeed/ (use this unless a better spot in the vault is found).
+
 Here is the note content to save:
 
 ${noteContent}

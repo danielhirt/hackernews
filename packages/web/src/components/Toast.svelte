@@ -20,7 +20,7 @@
 <style>
   .toast {
     position: fixed;
-    bottom: 24px;
+    bottom: 72px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 300;

@@ -271,6 +271,22 @@
     setExpanded(itemId, summaryExpanded)
   }
 
+  function buildSummarizeBody(): Record<string, unknown> {
+    const body: Record<string, unknown> = { model: appSettings.value.model }
+    if (source === SOURCE_ID.HN) {
+      body.storyId = Number(sourceId)
+    } else {
+      body.title = title
+      body.url = url
+      body.text = bodyText
+      body.comments = comments.slice(0, 30).map(c => ({
+        author: c.author,
+        text: stripHtml(c.text),
+      }))
+    }
+    return body
+  }
+
   async function fetchSummary() {
     summaryExpanded = true
     summaryText = ''
@@ -278,23 +294,10 @@
     summaryLoading = true
 
     try {
-      const body: Record<string, unknown> = { model: appSettings.value.model }
-      if (source === SOURCE_ID.HN) {
-        body.storyId = Number(sourceId)
-      } else {
-        body.title = title
-        body.url = url
-        body.text = bodyText
-        body.comments = comments.slice(0, 30).map(c => ({
-          author: c.author,
-          text: stripHtml(c.text),
-        }))
-      }
-
       const res = await fetch('/api/summarize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify(buildSummarizeBody()),
       })
 
       const text = await res.text()
@@ -315,26 +318,12 @@
     const toastId = showToast('Saving to Obsidian...')
 
     try {
-      // Step 1: Get or generate summary
       let summary = getSummary(itemId)
       if (!summary) {
-        const body: Record<string, unknown> = { model: appSettings.value.model }
-        if (source === SOURCE_ID.HN) {
-          body.storyId = Number(sourceId)
-        } else {
-          body.title = title
-          body.url = url
-          body.text = bodyText
-          body.comments = comments.slice(0, 30).map(c => ({
-            author: c.author,
-            text: stripHtml(c.text),
-          }))
-        }
-
         const sumRes = await fetch('/api/summarize', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
+          body: JSON.stringify(buildSummarizeBody()),
         })
 
         if (!sumRes.ok) {

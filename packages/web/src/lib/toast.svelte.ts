@@ -25,7 +25,7 @@ export function showToast(message: string, status: ToastStatus = 'loading'): str
   return id
 }
 
-// NOTE: status is OPTIONAL — when omitted, keeps the current status
+// Omit status to update only the message (e.g. progress text while staying in 'loading')
 export function updateToast(id: string, message: string, status?: ToastStatus): void {
   if (current?.id !== id) return
   clearTimeout(dismissTimer)
