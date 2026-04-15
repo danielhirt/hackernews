@@ -2,6 +2,7 @@
   import '../app.css'
   import NavBar from '../components/NavBar.svelte'
   import ScrollToTop from '../components/ScrollToTop.svelte'
+  import Toast from '../components/Toast.svelte'
   import { handleKeydown } from '$lib/keyboard.svelte'
   import { getSettings } from '$lib/settings.svelte'
 
@@ -30,6 +31,7 @@
   {@render children()}
 </main>
 <ScrollToTop />
+<Toast />
 </div>
 
 <style>
