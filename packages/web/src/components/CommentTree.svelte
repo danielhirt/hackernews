@@ -7,12 +7,14 @@
     depth = 0,
     focusPath = [],
     onfocus,
+    onloadchildren,
     defaultCollapsed = false,
   }: {
     comments: CommentItem[]
     depth?: number
     focusPath?: string[]
     onfocus?: (id: string) => void
+    onloadchildren?: (id: string) => Promise<void>
     defaultCollapsed?: boolean
   } = $props()
 </script>
@@ -24,6 +26,7 @@
       {depth}
       {focusPath}
       {onfocus}
+      {onloadchildren}
       {defaultCollapsed}
     />
   {/each}

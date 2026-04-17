@@ -9,16 +9,19 @@
     depth = 0,
     focusPath = [],
     onfocus,
+    onloadchildren,
     defaultCollapsed = false,
   }: {
     comment: CommentItem
     depth?: number
     focusPath?: string[]
     onfocus?: (id: string) => void
+    onloadchildren?: (id: string) => Promise<void>
     defaultCollapsed?: boolean
   } = $props()
 
   let collapsed = $state(false)
+  let loadingChildren = $state(false)
 
   $effect(() => {
     collapsed = defaultCollapsed
@@ -27,6 +30,29 @@
   let isFocused = $derived(focusPath.includes(comment.id))
   let isHn = $derived(comment.source === SOURCE_ID.HN)
   let copied = $state(false)
+  let pendingCount = $derived(comment.pendingKidIds?.length ?? 0)
+  let hasPendingKids = $derived(pendingCount > 0)
+  // Total reply count for display: actual + pending
+  let replyCount = $derived(comment.children.length + pendingCount)
+
+  async function loadPendingChildren() {
+    if (!onloadchildren || !hasPendingKids || loadingChildren) return
+    loadingChildren = true
+    try {
+      await onloadchildren(comment.id)
+    } finally {
+      loadingChildren = false
+    }
+  }
+
+  async function handleToggle() {
+    const willExpand = collapsed
+    collapsed = !collapsed
+    // When expanding from collapsed and children are pending, kick off the fetch
+    if (willExpand) {
+      await loadPendingChildren()
+    }
+  }
 
   function stripHtml(html: string): string {
     const div = document.createElement('div')
@@ -48,7 +74,7 @@
     {/if}
     <div class="comment-content">
       <div class="comment-header">
-        <button class="collapse-toggle" onclick={() => (collapsed = !collapsed)}>
+        <button class="collapse-toggle" onclick={handleToggle}>
           {collapsed ? '[+]' : '[-]'}
         </button>
         {#if isHn}
@@ -63,7 +89,7 @@
         <button class="copy-btn" onclick={copyComment} title="Copy comment">
           {copied ? '✓' : '⧉'}
         </button>
-        {#if onfocus && comment.children.length}
+        {#if onfocus && replyCount}
           <button class="focus-btn" onclick={() => onfocus(comment.id)} title="Focus thread">
             [f]
           </button>
@@ -71,18 +97,26 @@
       </div>
       {#if !collapsed}
         <div class="comment-body">{@html sanitizeHtml(comment.text)}</div>
+        {#if loadingChildren}
+          <span class="children-loading">Loading replies...</span>
+        {:else if hasPendingKids && comment.children.length === 0}
+          <button class="show-replies-btn" onclick={loadPendingChildren}>
+            Show {pendingCount} {pendingCount === 1 ? 'reply' : 'replies'}
+          </button>
+        {/if}
         {#if comment.children.length}
           <CommentTree
             comments={comment.children}
             depth={depth + 1}
             {focusPath}
             {onfocus}
+            {onloadchildren}
             {defaultCollapsed}
           />
         {/if}
-      {:else}
+      {:else if replyCount}
         <span class="collapsed-hint">
-          {comment.children.length} replies
+          {replyCount} replies
         </span>
       {/if}
     </div>
@@ -235,5 +269,23 @@
   .collapsed-hint {
     font-size: 0.75rem;
     color: var(--color-text-faint);
+  }
+
+  .children-loading {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    padding: 4px 0;
+  }
+
+  .show-replies-btn {
+    align-self: flex-start;
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    padding: 2px 0;
+    text-align: left;
+  }
+
+  .show-replies-btn:hover {
+    color: var(--color-accent);
   }
 </style>

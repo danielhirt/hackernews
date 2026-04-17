@@ -5,7 +5,7 @@
     type Story, type FeedItem, type CommentItem, type ContentSource,
     SOURCES, SOURCE_ID, parseItemId, buildItemId,
   } from '@omnifeed/core'
-  import { fetchHnCommentTree } from '@omnifeed/core'
+  import { fetchHnCommentBatch, fetchHnCommentChildren } from '@omnifeed/core'
   import { timeAgo, domainFrom } from '$lib/time'
   import CommentTree from '../../../components/CommentTree.svelte'
   import SaveButton from '../../../components/SaveButton.svelte'
@@ -44,6 +44,11 @@
   let flagged = $state(false)
   let refreshKey = $state(0)
   let refreshingComments = $state(false)
+
+  // HN-only: unfetched root comment IDs for "Load more" pagination
+  const ROOT_CHUNK = 30
+  let pendingRootIds = $state<number[]>([])
+  let loadingMoreRoots = $state(false)
 
   let domain = $derived(domainFrom(url))
   let sourceConfig = $derived(SOURCES.find(s => s.id === source))
@@ -103,6 +108,7 @@
     flagged = false
     focusStack = []
     comments = []
+    pendingRootIds = []
 
     try {
       if (src === SOURCE_ID.HN) {
@@ -141,10 +147,50 @@
     if (story.kids?.length) {
       commentsLoading = true
       try {
-        comments = await fetchHnCommentTree(hnClient, story.kids)
+        const allKids = story.kids
+        const initial = allKids.slice(0, ROOT_CHUNK)
+        pendingRootIds = allKids.slice(ROOT_CHUNK)
+        comments = await fetchHnCommentBatch(hnClient, initial)
       } finally {
         commentsLoading = false
       }
+    } else {
+      pendingRootIds = []
+    }
+  }
+
+  async function loadMoreRoots() {
+    if (loadingMoreRoots || pendingRootIds.length === 0) return
+    loadingMoreRoots = true
+    try {
+      const next = pendingRootIds.slice(0, ROOT_CHUNK)
+      const remaining = pendingRootIds.slice(ROOT_CHUNK)
+      const batch = await fetchHnCommentBatch(hnClient, next)
+      comments = [...comments, ...batch]
+      pendingRootIds = remaining
+    } finally {
+      loadingMoreRoots = false
+    }
+  }
+
+  // Lazy-fetch a comment's children when expanded. Mutates the tree in place
+  // by replacing the matching CommentItem and reassigning `comments` for
+  // reactivity. Returns false if nothing was fetched (no pendingKidIds, or HN
+  // is not the source).
+  async function loadChildren(targetId: string): Promise<void> {
+    const node = findComment(comments, targetId)
+    if (!node || !node.pendingKidIds?.length) return
+    const kidIds = node.pendingKidIds
+    node.pendingKidIds = undefined  // optimistic clear so user can't double-click
+    try {
+      const kids = await fetchHnCommentChildren(hnClient, node.depth, kidIds)
+      node.children = kids
+      // Trigger reactivity: reassign root array
+      comments = [...comments]
+    } catch {
+      // Restore on failure
+      node.pendingKidIds = kidIds
+      comments = [...comments]
     }
   }
 
@@ -194,7 +240,10 @@
       if (source === SOURCE_ID.HN) {
         const item = await hnClient.fetchItem(Number(sourceId))
         if (item && 'kids' in item && (item as Story).kids?.length) {
-          comments = await fetchHnCommentTree(hnClient, (item as Story).kids!)
+          const allKids = (item as Story).kids!
+          const initial = allKids.slice(0, ROOT_CHUNK)
+          pendingRootIds = allKids.slice(ROOT_CHUNK)
+          comments = await fetchHnCommentBatch(hnClient, initial)
           commentCount = (item as Story).descendants ?? 0
         }
       } else if (source === SOURCE_ID.LOBSTERS) {
@@ -512,9 +561,17 @@
           comments={displayedComments}
           focusPath={focusStack}
           onfocus={focusComment}
+          onloadchildren={isHn ? loadChildren : undefined}
           defaultCollapsed={collapseAll}
         />
       {/key}
+      {#if isHn && pendingRootIds.length > 0 && focusStack.length === 0}
+        <div class="load-more-wrap">
+          <button class="load-more-btn" onclick={loadMoreRoots} disabled={loadingMoreRoots}>
+            {loadingMoreRoots ? 'Loading...' : `Load ${Math.min(ROOT_CHUNK, pendingRootIds.length)} more comments (${pendingRootIds.length} remaining)`}
+          </button>
+        </div>
+      {/if}
     {:else}
       <p class="no-comments">No comments.</p>
     {/if}
@@ -879,6 +936,31 @@
     color: var(--color-text-muted);
     padding: 16px 0;
     font-size: 0.85rem;
+  }
+
+  .load-more-wrap {
+    display: flex;
+    justify-content: center;
+    padding: 16px 0;
+    border-top: 1px solid var(--color-border);
+    margin-top: 12px;
+  }
+
+  .load-more-btn {
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+    padding: 6px 16px;
+    border: 1px solid var(--color-border);
+  }
+
+  .load-more-btn:hover:not(:disabled) {
+    color: var(--color-accent);
+    border-color: var(--color-accent);
+  }
+
+  .load-more-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
   }
 
   .tag-pill {

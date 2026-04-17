@@ -160,6 +160,13 @@ export interface CommentItem {
   children: CommentItem[]
   depth: number
   sourceUrl?: string
+  /**
+   * HN-only: native IDs of children that exist on the source but haven't been
+   * fetched yet. When non-empty, the UI shows an "expand to load" affordance
+   * instead of rendering `children`. After lazy-fetching, children is populated
+   * and pendingKidIds is cleared.
+   */
+  pendingKidIds?: number[]
 }
 
 export const SOURCES: SourceConfig[] = [
